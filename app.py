@@ -4,7 +4,7 @@ from supabase import create_client
 
 # Configuração da conexão
 url = "https://yovylzbqqulaiqfvugdg.supabase.co"
-key = "COLE_SUA_CHAVE_AQUI"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnlsemJxcXVsYWlxZnZ1Z2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODY2MjAsImV4cCI6MjA4ODM2MjYyMH0.7yRMk-vNTjDHSYRB0HUKaUbTP2mT3U3f8UnTsZl_ceE"
 supabase = create_client(url, key)
 
 st.title("📊 Painel de Performance - Robô de Apostas")
@@ -35,3 +35,4 @@ if not df.empty:
     st.dataframe(df[['evento', 'status', 'valor_aposta', 'odd', 'lucro']])
 else:
     st.write("Nenhuma aposta encontrada no banco.")
+
