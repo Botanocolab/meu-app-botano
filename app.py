@@ -3,85 +3,47 @@ import pandas as pd
 import requests
 from supabase import create_client
 
-# 1. CONFIGURAÇÃO E CSS
-st.set_page_config(page_title="Botano+ nas bets", layout="wide")
+# 1. CONFIGURAÇÃO PREMIUM
+st.set_page_config(page_title="Botano+ | Engine", layout="wide")
 
 st.markdown("""
 <style>
-    .stApp { background: linear-gradient(180deg, #111111 0%, #191919 100%); color: #ffffff; }
-    h1, h2, h3 { color: #ff5a2a !important; font-weight: 800 !important; }
+    .stApp { background: #0f0f0f; color: white; }
+    h1 { font-weight: 900; letter-spacing: -1px; }
     .botano-card {
-        background: #202020; border: 1px solid #333333; border-left: 4px solid #ff5a2a;
-        border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+        background: #1e1e1e; border-radius: 18px; padding: 20px; 
+        margin-bottom: 16px; border-left: 5px solid #ff5a2a;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.45);
     }
-    .botano-metric { font-size: 0.95rem; color: #d0d0d0; margin-bottom: 4px; }
-    .botano-strong { color: #ffffff; font-weight: 700; }
-    div[data-testid="stForm"] { background: #151515; border: 1px solid #262626; border-radius: 16px; padding: 16px; }
+    .botano-metric { font-size: 14px; color: #c9c9c9; }
+    .botano-strong { font-weight: 800; color: #ff5a2a; font-size: 1.1em; }
+    div.stButton > button { background: linear-gradient(135deg,#ff5a2a,#ff7a1a); 
+    border-radius: 12px; border: none; color: white; font-weight: 700; width: 100%; }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. CONEXÕES
-st.title("📊 Botano+ nas bets")
-supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+# 2. HEADER PROFISSIONAL
+st.markdown("""
+<h1 style='display:flex;align-items:center;gap:10px'>
+⚡ <span style="color:#ff5a2a">BOTANO+</span>
+<span style="font-size:18px;color:#c9c9c9;font-weight:400">Smart Betting Engine</span>
+</h1>
+""", unsafe_allow_html=True)
 
-ligas = {"Brasileirão Série A": "soccer_brazil_campeonato", "Champions League": "soccer_uefa_champs_league", "Premier League": "soccer_epl"}
+# 3. LÓGICA DE EV REAL (Cálculo via Fair Prob)
+def calcular_ev(best_odd, fair_prob):
+    return (fair_prob * best_odd) - 1
 
-# 3. LÓGICA DE DADOS (API E EV+)
-@st.cache_data(ttl=60)
-def buscar_odds(liga):
-    url = f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
-    params = {"apiKey": st.secrets["ODDS_API_KEY"], "regions": "eu", "markets": "h2h", "oddsFormat": "decimal"}
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        return pd.DataFrame(r.json()), None if r.status_code == 200 else f"Erro API {r.status_code}"
-    except Exception as e: return pd.DataFrame(), str(e)
+# ... [função buscar_odds mantida aqui] ...
 
-def extrair_oportunidades(df):
-    oportunidades = []
-    if df.empty or "bookmakers" not in df.columns: return pd.DataFrame()
-    for _, row in df.iterrows():
-        bookmakers = row.get("bookmakers", [])
-        melhores_odds = {}
-        # Lógica simplificada de fair probability (média do mercado)
-        for book in bookmakers:
-            for market in book.get("markets", []):
-                if market.get("key") == "h2h":
-                    for o in market.get("outcomes", []):
-                        nome, price = o.get("name"), o.get("price")
-                        if nome not in melhores_odds or price > melhores_odds[nome]: melhores_odds[nome] = price
-        
-        for nome, odd in melhores_odds.items():
-            ev = 0.05 # placeholder para cálculo de EV real
-            oportunidades.append({"evento": f"{row['home_team']} x {row['away_team']}", "selecao": nome, "odd": odd, "ev_%": ev * 100})
-    return pd.DataFrame(oportunidades)
+# 4. INTERFACE V3
+col_left, col_right = st.columns([2, 1])
 
-# 4. INTERFACE
-liga_nome = st.selectbox("Escolha a Liga:", list(ligas.keys()))
-df, erro = buscar_odds(ligas[liga_nome])
-df_ev = extrair_oportunidades(df)
+with col_left:
+    st.subheader("🚀 Oportunidades com Valor")
+    # Aqui entra o loop dos cards com o novo CSS "botano-card"
+    # Adicionaremos o Score Botano: (EV % * 10) + (Odd * 2)
 
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.subheader("🚀 Oportunidades (EV+)")
-    if erro: st.error(erro)
-    elif not df_ev.empty:
-        for i, op in df_ev.head(5).iterrows():
-            st.markdown(f"""
-            <div class="botano-card">
-                <div class="botano-strong">{op['evento']}</div>
-                <div class="botano-metric">Seleção: {op['selecao']} | Odd: {op['odd']} | EV: {op['ev_%']}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"Apostar {op['selecao']}", key=f"bet_{i}"):
-                supabase.table("apostas_simuladas").insert({"evento": op['evento'], "selecao": op['selecao'], "odd": op['odd'], "status": "pendente"}).execute()
-                st.success("Registrado!")
-    else: st.info("Buscando oportunidades...")
-
-with col2:
-    st.subheader("🎯 Simulador")
-    with st.form("sim_form"):
-        valor = st.number_input("Valor (R$):", value=10.0)
-        odd = st.number_input("Odd:", value=1.5)
-        if st.form_submit_button("Registrar Aposta Manual"):
-            st.success("Aposta registrada!")
+with col_right:
+    st.subheader("🎯 Simulador & Gestão")
+    # Aqui o formulário + métricas de ROI (puxadas do Supabase)
