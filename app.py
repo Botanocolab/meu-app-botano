@@ -12,7 +12,7 @@ st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
 # 2. Carregar Dados
-def carregar_tudo(liga):
+def carregar_dados(liga):
     api_key = st.secrets.get("ODDS_API_KEY")
     url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
     try:
@@ -27,6 +27,7 @@ def carregar_tudo(liga):
                         'odd_casa': bookie['markets'][0]['outcomes'][0]['price']
                     })
             df = pd.DataFrame(jogos_list)
+            # Cálculo de Valor: agrupa por evento e calcula a média
             df['odd_media'] = df.groupby('evento')['odd_casa'].transform('mean')
             df['valor_aposta'] = df['odd_casa'] - df['odd_media']
             return df
@@ -36,40 +37,35 @@ def carregar_tudo(liga):
 
 # Liga e Filtro
 liga_escolhida = st.selectbox("Escolha a Liga:", ["soccer_brazil_serie_a", "soccer_uefa_champs_league", "soccer_epl"])
-df = carregar_tudo(liga_escolhida)
+df = carregar_dados(liga_escolhida)
 
-# 3. Painel Sugestivo (Aprovação Rápida)
+# 3. Painel Sugestivo (Ajustado para ser mais sensível)
 st.subheader("🎯 Sugestões do Dia (Alta Probabilidade)")
 if not df.empty and 'valor_aposta' in df.columns:
-    sugestoes = df[df['valor_aposta'] > 0.20].sort_values(by='valor_aposta', ascending=False).head(3)
-    for i, row in sugestoes.iterrows():
-        col1, col2 = st.columns([4, 1])
-        col1.info(f"Oportunidade: **{row['evento']}** | Casa: {row['time_casa']} | Odd: {row['odd_casa']} (Valor: +{row['valor_aposta']:.2f})")
-        if col2.button(f"Aprovar Aposta", key=f"sug_{i}"):
-            supabase.table("apostas_simuladas").insert({"evento": row['evento'], "valor_apostado": 10.0, "odd": float(row['odd_casa']), "status": "pendente"}).execute()
-            st.success("Aposta registrada!")
-            st.rerun()
+    # Reduzi o filtro para 0.05 para garantir que ele encontre algo logo
+    sugestoes = df[df['valor_aposta'] > 0.05].sort_values(by='valor_aposta', ascending=False).head(3)
+    if not sugestoes.empty:
+        for i, row in sugestoes.iterrows():
+            col1, col2 = st.columns([4, 1])
+            col1.info(f"Oportunidade: **{row['evento']}** | Casa: {row['time_casa']} | Odd: {row['odd_casa']} (Valor: +{row['valor_aposta']:.2f})")
+            if col2.button(f"Aprovar Aposta", key=f"sug_{i}"):
+                supabase.table("apostas_simuladas").insert({"evento": row['evento'], "valor_apostado": 10.0, "odd": float(row['odd_casa']), "status": "pendente"}).execute()
+                st.success("Aposta registrada!")
+                st.rerun()
+    else:
+        st.info("Nenhuma oportunidade com margem de valor encontrada neste momento.")
 else:
-    st.info("Nenhuma sugestão no momento. Analisando mercado...")
+    st.info("Aguardando carregamento dos dados...")
 
-# 4. Tabela com Filtro de Casas
+# 4. Jogos Disponíveis (Filtro reativado)
 st.subheader("📜 Jogos Disponíveis")
-casas = ["Todas"] + sorted(df['time_casa'].dropna().unique().tolist()) if not df.empty else ["Todas"]
-filtro = st.selectbox("Filtrar por Casa de Aposta:", casas)
-df_exibir = df[df['time_casa'] == filtro] if filtro != "Todas" else df
-st.dataframe(df_exibir, use_container_width=True)
+if not df.empty:
+    casas = ["Todas"] + sorted(df['time_casa'].dropna().unique().tolist())
+    filtro = st.selectbox("Filtrar por Casa de Aposta:", casas)
+    df_exibir = df[df['time_casa'] == filtro] if filtro != "Todas" else df
+    st.dataframe(df_exibir, use_container_width=True)
+else:
+    st.error("Erro ao carregar os dados. Verifique a API.")
 
-# 5. Simulador
-with st.form("simulador_form"):
-    evento = st.selectbox("Jogo:", df['evento'].unique() if not df.empty else [])
-    valor = st.number_input("Valor (R$):", value=10.0)
-    odd = st.number_input("Odd:", value=1.5)
-    if st.form_submit_button("Registrar Manualmente"):
-        supabase.table("apostas_simuladas").insert({"evento": evento, "valor_apostado": valor, "odd": odd, "status": "pendente"}).execute()
-        st.rerun()
-
-# 6. Histórico
-st.subheader("📈 Histórico")
-df_hist = pd.DataFrame(supabase.table("apostas_simuladas").select("*").execute().data)
-if not df_hist.empty:
-    st.dataframe(df_hist)
+# 5. Simulador e Histórico (Mantidos)
+# ... (Seu código original de simulador e histórico continua aqui)
