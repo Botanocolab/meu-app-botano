@@ -13,7 +13,6 @@ st.title("📊 Botano+ nas bets")
 
 # 2. Carregar Dados com Integração API
 def carregar_tudo():
-    # Tenta buscar da API (ODDS_API_KEY deve estar nos Secrets)
     api_key = st.secrets.get("ODDS_API_KEY")
     url_api = f"https://api.the-odds-api.com/v4/sports/soccer_brazil_serie_a/odds/?apiKey={api_key}&regions=br&markets=h2h"
     
@@ -23,7 +22,6 @@ def carregar_tudo():
             data = response.json()
             jogos_list = []
             for jogo in data:
-                # Extraindo dados da estrutura da API
                 if 'bookmakers' in jogo and len(jogo['bookmakers']) > 0:
                     bookmaker = jogo['bookmakers'][0]['title']
                     price = jogo['bookmakers'][0]['markets'][0]['outcomes'][0]['price']
@@ -34,15 +32,12 @@ def carregar_tudo():
                     })
             df = pd.DataFrame(jogos_list)
         else:
-            # Fallback para o Supabase se a API der erro
             jogos = supabase.table("apostas").select("*").execute()
             df = pd.DataFrame(jogos.data)
     except:
-        # Fallback para o Supabase se a conexão falhar
         jogos = supabase.table("apostas").select("*").execute()
         df = pd.DataFrame(jogos.data)
 
-    # Buscar Histórico sempre do Supabase
     historico = supabase.table("apostas_simuladas").select("*").execute()
     return df, pd.DataFrame(historico.data)
 
@@ -84,9 +79,16 @@ with col1:
     st.subheader("📜 Histórico de Simulações")
     if not df_historico.empty:
         st.dataframe(df_historico, use_container_width=True)
-
 with col2:
     st.subheader("📈 Evolução do seu Lucro")
     if not df_historico.empty and 'status' in df_historico.columns:
         df_final = df_historico[df_historico['status'].isin(['ganha', 'perdida'])].copy()
-        if not
+        if not df_final.empty:
+            df_final['lucro'] = df_final.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], axis=1)
+            df_final['acumulado'] = df_final['lucro'].cumsum()
+            st.line_chart(df_final['acumulado'])
+        else:
+            st.info("Aguardando apostas finalizadas para gerar o gráfico.")
+
+if st.button('Recarregar Tudo'):
+    st.rerun()
