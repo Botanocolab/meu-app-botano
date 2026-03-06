@@ -1,0 +1,24 @@
+name: Rodar Robo de Coleta
+on:
+  schedule:
+    - cron: '0 * * * *' # Roda a cada hora
+  workflow_dispatch: # Permite que você clique num botão para rodar manualmente!
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v2
+      - name: Instalar Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Instalar dependencias
+        run: pip install requests supabase
+      - name: Rodar o robo
+        run: python bot_coleta.py
+        env:
+          # Aqui entram as chaves que você vai configurar no GitHub (veja abaixo)
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
