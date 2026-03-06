@@ -74,3 +74,4 @@ else:
     st.write("Nenhuma aposta encontrada no banco.")
 
 
+
