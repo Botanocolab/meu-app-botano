@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.9'
       - name: Instalar dependencias
-        run: pip install requests supabase
+        run: pip install -r requirements.txt
       - name: Rodar o robo
         run: python bot_coleta.py
         env:
