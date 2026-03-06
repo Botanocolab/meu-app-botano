@@ -11,7 +11,7 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados com Integração API e Cálculo de Valor
+# 2. Carregar Dados com Integração API
 def carregar_tudo(liga="soccer_brazil_serie_a"):
     api_key = st.secrets.get("ODDS_API_KEY")
     url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
@@ -30,6 +30,7 @@ def carregar_tudo(liga="soccer_brazil_serie_a"):
                             'odd_casa': bookie['markets'][0]['outcomes'][0]['price']
                         })
             df = pd.DataFrame(jogos_list)
+            # Cálculo de Valor (Value Bet)
             if not df.empty:
                 df['odd_media'] = df.groupby('evento')['odd_casa'].transform('mean')
                 df['valor_aposta'] = df['odd_casa'] - df['odd_media']
@@ -47,7 +48,7 @@ liga_escolhida = st.selectbox("Escolha a Liga para monitorar:", [
 ])
 df, df_historico = carregar_tudo(liga_escolhida)
 
-# 3. Tabela de Jogos com Filtro Seguro
+# 3. Tabela de Jogos
 st.subheader("Jogos Disponíveis (Foco em Valor)")
 if not df.empty:
     casas = ["Todas"] + sorted(df['time_casa'].dropna().unique().tolist())
@@ -85,4 +86,6 @@ with col2:
     if not df_historico.empty and 'status' in df_historico.columns:
         df_final = df_historico[df_historico['status'].isin(['ganha', 'perdida'])].copy()
         if not df_final.empty:
-            df_final['lucro'] = df_final.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'gan
+            df_final['lucro'] = df_final.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], axis=1)
+            df_final['acumulado'] = df_final['lucro'].cumsum()
+            st.line_chart(df_final['acumulado'])
