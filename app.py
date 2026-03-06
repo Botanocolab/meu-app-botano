@@ -2,50 +2,54 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 
-# Configurações do Supabase
+# Configurações
 url = "https://yovylzbqqulaiqfvugdg.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnlsemJxcXVsYWlxZnZ1Z2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODY2MjAsImV4cCI6MjA4ODM2MjYyMH0.7yRMk-vNTjDHSYRB0HUKaUbTP2mT3U3f8UnTsZl_ceE" 
 
-# Criar a conexão
+# Conexão
 supabase = create_client(url, key)
 
 st.title("📊 Painel de Performance - Robô de Apostas")
 
-# Carregar dados da tabela
+# Busca dados
 try:
     response = supabase.table("carteira_simulada").select("*").execute()
-    df = pd.DataFrame(response.data)
-
-    if not df.empty:
-        # Lógica da simulação:
+    data = response.data
+    
+    if data:
+        df = pd.DataFrame(data)
+        
+        # 1. Lógica da Simulação: Criamos a coluna explicitamente
         def calcular_resultado(row):
+            # Normaliza o texto para evitar erros
             status = str(row.get('resultado', '')).lower().strip()
             try:
                 valor = float(row.get('valor_investido', 0))
             except:
                 valor = 0.0
             
-            # Se for 'green', simulamos 90% de lucro. Se for 'red', perda de 100%.
             if status == 'green':
                 return valor * 0.9
             elif status == 'red':
                 return -valor
-            else:
-                return 0.0
+            return 0.0
 
-        # Aplica o cálculo
+        # Aplica o cálculo e garante que a coluna exista
         df['lucro_simulado'] = df.apply(calcular_resultado, axis=1)
         
-        # Exibição do Saldo Acumulado
+        # 2. Exibição do Saldo
         total_acumulado = df['lucro_simulado'].sum()
         st.metric("Saldo da Simulação (R$)", f"{total_acumulado:.2f}")
         
-        # Exibe a tabela com todas as colunas disponíveis para conferência
+        # 3. Exibição da tabela forçando as colunas que você quer ver
         st.subheader("Histórico de Apostas e Simulação")
-        st.dataframe(df, use_container_width=True)
+        
+        # Seleciona apenas as colunas que importam para garantir que apareça
+        colunas_finais = ['evento', 'valor_investido', 'resultado', 'lucro_simulado']
+        st.dataframe(df[colunas_finais], use_container_width=True)
         
     else:
-        st.warning("A tabela está vazia. Adicione apostas no Supabase.")
+        st.warning("A tabela está vazia ou não retornou dados.")
 
 except Exception as e:
-    st.error(f"Erro ao conectar ou ler dados: {e}")
+    st.error(f"Erro: {e}")
