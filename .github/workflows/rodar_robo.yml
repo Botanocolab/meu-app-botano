@@ -20,5 +20,5 @@ jobs:
         run: python bot_coleta.py
         env:
           # Aqui entram as chaves que você vai configurar no GitHub (veja abaixo)
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          SUPABASE_KEY: ${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdnlsemJxcXVsYWlxZnZ1Z2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODY2MjAsImV4cCI6MjA4ODM2MjYyMH0.7yRMk-vNTjDHSYRB0HUKaUbTP2mT3U3f8UnTsZl_ceE }}
+          RAPIDAPI_KEY: ${{ fc9bfc38fcmshf7416ba4768fc22p17a086jsn93f3e730128b }}
