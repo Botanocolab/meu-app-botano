@@ -10,8 +10,7 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados
-@st.cache_data(ttl=60)
+# 2. Carregar Dados sem Cache para garantir atualização em tempo real
 def carregar_tudo():
     jogos = supabase.table("apostas").select("*").execute()
     historico = supabase.table("apostas_simuladas").select("*").execute()
@@ -44,7 +43,7 @@ with st.form("simulador_form"):
         st.success("Aposta registrada com sucesso!")
         st.rerun()
 
-# 5. Histórico e Gráfico de Performance
+# 5. Histórico e Gráfico
 st.divider()
 col1, col2 = st.columns(2)
 
@@ -55,12 +54,9 @@ with col1:
 
 with col2:
     st.subheader("📈 Evolução do seu Lucro")
-    if not df_historico.empty:
-        # Filtra apenas as apostas finalizadas (ganhas ou perdidas)
+    if not df_historico.empty and 'status' in df_historico.columns:
         df_final = df_historico[df_historico['status'].isin(['ganha', 'perdida'])].copy()
-        
         if not df_final.empty:
-            # Cálculo: Se ganha, lucro é (odd*valor)-valor. Se perdida, perde o valor.
             df_final['lucro'] = df_final.apply(
                 lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], 
                 axis=1
@@ -68,8 +64,4 @@ with col2:
             df_final['acumulado'] = df_final['lucro'].cumsum()
             st.line_chart(df_final['acumulado'])
         else:
-            st.info("Aguardando apostas finalizadas para gerar o gráfico.")
-
-if st.button('Recarregar Tudo'):
-    st.cache_data.clear()
-    st.rerun()
+            st.info("Aguardando apostas finalizadas.")
