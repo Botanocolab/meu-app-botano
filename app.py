@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from supabase import create_client
 
-# 1. Configuração
+# Configuração
 url = "https://yovylzbqqulaiqfvugdg.supabase.co"
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
@@ -11,64 +11,72 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados com Integração API
-def carregar_tudo(liga="soccer_brazil_serie_a"):
+# 1. Carregamento dos Dados
+def carregar_dados(liga):
     api_key = st.secrets.get("ODDS_API_KEY")
     url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
     
-    df = pd.DataFrame()
     try:
         response = requests.get(url_api, timeout=10)
         if response.status_code == 200:
             data = response.json()
             jogos_list = []
             for jogo in data:
-                if 'bookmakers' in jogo:
-                    for bookie in jogo['bookmakers']:
-                        jogos_list.append({
-                            'evento': f"{jogo['home_team']} vs {jogo['away_team']}",
-                            'time_casa': bookie['title'],
-                            'odd_casa': bookie['markets'][0]['outcomes'][0]['price']
-                        })
+                for bookie in jogo.get('bookmakers', []):
+                    jogos_list.append({
+                        'evento': f"{jogo['home_team']} vs {jogo['away_team']}",
+                        'time_casa': bookie['title'],
+                        'odd_casa': bookie['markets'][0]['outcomes'][0]['price']
+                    })
             df = pd.DataFrame(jogos_list)
-            if not df.empty:
-                df['odd_media'] = df.groupby('evento')['odd_casa'].transform('mean')
-                df['valor_aposta'] = df['odd_casa'] - df['odd_media']
+            df['odd_media'] = df.groupby('evento')['odd_casa'].transform('mean')
+            df['valor_aposta'] = df['odd_casa'] - df['odd_media']
+            return df
     except:
-        # Fallback: tenta buscar do Supabase
-        dados_db = supabase.table("apostas").select("*").execute().data
-        df = pd.DataFrame(dados_db)
+        pass
+    
+    # Fallback: Se API falhar ou der erro, busca Supabase
+    return pd.DataFrame(supabase.table("apostas").select("*").execute().data)
 
-    historico = pd.DataFrame(supabase.table("apostas_simuladas").select("*").execute().data)
-    return df, historico
+# Interface
+liga_escolhida = st.selectbox("Escolha a Liga:", ["soccer_brazil_serie_a", "soccer_uefa_champs_league", "soccer_epl"])
+df = carregar_dados(liga_escolhida)
+df_historico = pd.DataFrame(supabase.table("apostas_simuladas").select("*").execute().data)
 
-# Seleção de Liga
-liga_escolhida = st.selectbox("Escolha a Liga para monitorar:", [
-    "soccer_brazil_serie_a", "soccer_uefa_champs_league", "soccer_epl"
-])
-df, df_historico = carregar_tudo(liga_escolhida)
-
-# 3. Painel Sugestivo
-st.subheader("💡 Sugestões de Valor")
-if not df.empty and 'valor_aposta' in df.columns:
-    sugestoes = df[df['valor_aposta'] > 0.1].sort_values(by='valor_aposta', ascending=False)
+# 2. Painel Sugestivo (Só aparece se houver dados de valor)
+if 'valor_aposta' in df.columns:
+    st.subheader("💡 Sugestões de Valor")
+    sugestoes = df[df['valor_aposta'] > 0.1].sort_values(by='valor_aposta', ascending=False).head(3)
     if not sugestoes.empty:
-        for i, row in sugestoes.head(3).iterrows():
+        for i, row in sugestoes.iterrows():
             col1, col2 = st.columns([4, 1])
-            col1.info(f"Oportunidade: **{row['evento']}** | Casa: {row['time_casa']} | Odd: {row['odd_casa']} (Valor: +{row['valor_aposta']:.2f})")
-            if col2.button(f"Aprovar #{i}"):
-                supabase.table("apostas_simuladas").insert({"evento": str(row['evento']), "valor_apostado": 10.0, "odd": float(row['odd_casa']), "status": "pendente"}).execute()
+            col1.info(f"Oportunidade: {row['evento']} | Casa: {row['time_casa']} | Odd: {row['odd_casa']} (Valor: +{row['valor_aposta']:.2f})")
+            if col2.button(f"Aprovar #{i}", key=f"btn_{i}"):
+                supabase.table("apostas_simuladas").insert({"evento": row['evento'], "valor_apostado": 10.0, "odd": float(row['odd_casa']), "status": "pendente"}).execute()
                 st.rerun()
-    else:
-        st.write("Nenhuma sugestão de valor alto agora.")
-else:
-    st.write("Dados de mercado em processamento...")
 
-# 4. Tabela e Simulador (Mantidos)
+# 3. Tabela Principal
 st.subheader("📜 Jogos Disponíveis")
 if not df.empty:
     st.dataframe(df, use_container_width=True)
 else:
-    st.error("Erro ao carregar dados da API ou do Banco.")
+    st.warning("Nenhum dado disponível no momento.")
 
-# ... (Simulador e Histórico permanecem iguais)
+# 4. Simulador
+st.divider()
+st.subheader("🎯 Simulador")
+with st.form("sim_form"):
+    evento = st.selectbox("Jogo:", df['evento'].unique() if not df.empty else ["N/A"])
+    valor = st.number_input("Valor (R$):", value=10.0)
+    odd = st.number_input("Odd:", value=1.5)
+    if st.form_submit_button("Registrar"):
+        supabase.table("apostas_simuladas").insert({"evento": evento, "valor_apostado": float(valor), "odd": float(odd), "status": "pendente"}).execute()
+        st.rerun()
+
+# 5. Histórico e Gráfico
+st.subheader("📈 Histórico")
+if not df_historico.empty:
+    st.dataframe(df_historico, use_container_width=True)
+    if 'status' in df_historico.columns:
+        df_historico['lucro'] = df_historico.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], axis=1)
+        st.line_chart(df_historico['lucro'].cumsum())
