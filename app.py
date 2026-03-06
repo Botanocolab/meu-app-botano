@@ -3,31 +3,53 @@ import pandas as pd
 import requests
 from supabase import create_client
 
-# Config
+# 1. Configuração inicial sem falhas
+st.set_page_config(page_title="Botano+ nas bets", layout="wide")
+st.title("📊 Botano+ nas bets")
+
+# Conexão (Verifique se as chaves no Streamlit Cloud estão exatas)
 url = "https://yovylzbqqulaiqfvugdg.supabase.co"
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
-st.title("📊 Botano+ nas bets")
-
-# Carregamento com proteção total
+# 2. Busca protegida (Se der erro, ele retorna um DF vazio, não o erro)
+@st.cache_data(ttl=60)
 def carregar_dados(liga):
+    api_key = st.secrets.get("ODDS_API_KEY")
+    url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
     try:
-        api_key = st.secrets["ODDS_API_KEY"]
-        url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
-        resp = requests.get(url_api, timeout=10)
-        if resp.status_code == 200:
-            return pd.DataFrame(resp.json()) # Simplificado para testar conexão
-        return None
+        r = requests.get(url_api, timeout=5)
+        if r.status_code == 200:
+            return pd.DataFrame(r.json())
     except:
-        return None
+        return pd.DataFrame()
+    return pd.DataFrame()
 
-liga = st.selectbox("Escolha a Liga:", ["soccer_brazil_serie_a", "soccer_uefa_champs_league"])
+# 3. Interface com travas de segurança
+liga = st.selectbox("Escolha a Liga:", ["soccer_brazil_serie_a", "soccer_uefa_champs_league", "soccer_epl"])
 df = carregar_dados(liga)
 
-# Se nada funcionar, pelo menos o código não explode
-if df is not None and not df.empty:
-    st.write("Dados recebidos!")
-    st.dataframe(df)
-else:
-    st.error("A API não retornou dados. Tente trocar a liga ou verifique a chave no Secret.")
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("📜 Jogos Disponíveis")
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.warning("Nenhum jogo encontrado no momento. A API pode estar indisponível.")
+
+with col2:
+    st.subheader("🎯 Simulador")
+    with st.form("sim_form"):
+        # Se o DF estiver vazio, desabilita a seleção para evitar erro
+        if not df.empty:
+            evento = st.selectbox("Jogo:", df['home_team'].tolist())
+            valor = st.number_input("Valor (R$):", value=10.0)
+            odd = st.number_input("Odd:", value=1.5)
+            submit = st.form_submit_button("Registrar Aposta")
+            if submit:
+                supabase.table("apostas_simuladas").insert({"evento": evento, "valor_apostado": float(valor), "odd": float(odd), "status": "pendente"}).execute()
+                st.success("Aposta registrada!")
+        else:
+            st.write("Aguardando dados para simular.")
+            st.form_submit_button("Registrar Aposta", disabled=True)
