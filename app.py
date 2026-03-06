@@ -17,15 +17,15 @@ try:
     df = pd.DataFrame(response.data)
 
     if not df.empty:
-        # Lógica da simulação
+        # Lógica da simulação:
         def calcular_resultado(row):
-            status = str(row.get('resultado')).lower().strip()
-            # Garante que o valor é numérico
+            status = str(row.get('resultado', '')).lower().strip()
             try:
                 valor = float(row.get('valor_investido', 0))
             except:
                 valor = 0.0
             
+            # Se for 'green', simulamos 90% de lucro. Se for 'red', perda de 100%.
             if status == 'green':
                 return valor * 0.9
             elif status == 'red':
@@ -40,12 +40,9 @@ try:
         total_acumulado = df['lucro_simulado'].sum()
         st.metric("Saldo da Simulação (R$)", f"{total_acumulado:.2f}")
         
-        # Exibe a tabela forçando a inclusão de todas as colunas relevantes
+        # Exibe a tabela com todas as colunas disponíveis para conferência
         st.subheader("Histórico de Apostas e Simulação")
-        
-        # Usamos uma lista explícita para garantir a ordem e a exibição
-        colunas_exibir = ['evento', 'valor_investido', 'resultado', 'lucro_simulado']
-        st.dataframe(df[colunas_exibir], use_container_width=True)
+        st.dataframe(df, use_container_width=True)
         
     else:
         st.warning("A tabela está vazia. Adicione apostas no Supabase.")
