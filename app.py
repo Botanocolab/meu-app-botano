@@ -12,28 +12,32 @@ st.title("📊 Botano+ nas bets")
 
 # 2. Carregar Dados
 def carregar_tudo():
+    # Buscamos a tabela de apostas e a de simuladas
     jogos = supabase.table("apostas").select("*").execute()
     historico = supabase.table("apostas_simuladas").select("*").execute()
     return pd.DataFrame(jogos.data), pd.DataFrame(historico.data)
 
 df, df_historico = carregar_tudo()
 
-# 3. Tabela de Jogos com Filtro de Casa
+# 3. Tabela de Jogos com Filtro Corrigido
 st.subheader("Jogos Disponíveis")
 
 if not df.empty:
-    # Lógica do Filtro
-    casas = ["Todas"] + sorted(df['casa_aposta'].dropna().unique().tolist())
+    # AQUI ESTÁ A CORREÇÃO: Usando 'time_casa' que é onde os nomes das casas estão no seu banco
+    casas_disponiveis = df['time_casa'].dropna().unique().tolist()
+    casas = ["Todas"] + sorted([str(c) for c in casas_disponiveis])
+    
     filtro_casa = st.selectbox("Filtrar por Casa de Aposta:", casas)
     
     if filtro_casa != "Todas":
-        df_exibir = df[df['casa_aposta'] == filtro_casa]
+        df_exibir = df[df['time_casa'] == filtro_casa]
     else:
         df_exibir = df
         
-    st.dataframe(df_exibir[['evento', 'time_casa', 'odd_casa', 'casa_aposta', 'created_at']], use_container_width=True)
+    # Exibe a tabela filtrada
+    st.dataframe(df_exibir[['evento', 'time_casa', 'odd_casa', 'created_at']], use_container_width=True)
 else:
-    st.info("Nenhum jogo disponível no momento.")
+    st.info("Nenhum jogo disponível.")
 
 # 4. Simulador
 st.divider()
@@ -52,7 +56,7 @@ with st.form("simulador_form"):
             "odd": float(odd), 
             "status": resultado
         }).execute()
-        st.success("Aposta registrada!")
+        st.success("Aposta registrada com sucesso!")
         st.rerun()
 
 # 5. Histórico e Gráfico
