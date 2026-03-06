@@ -4,12 +4,18 @@ import requests
 from supabase import create_client
 
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
-st.title("📊 Botano+ nas bets")
+st.title("📊 Botano+ nas bets - VERSÃO NOVA")
 
 # Supabase
 SUPABASE_URL = "https://yovylzbqqulaiqfvugdg.supabase.co"
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+ligas = {
+    "Brasileirão Série A": "soccer_brazil_campeonato",
+    "Champions League": "soccer_uefa_champs_league",
+    "Premier League": "soccer_epl"
+}
 
 @st.cache_data(ttl=60)
 def carregar_dados(liga):
@@ -45,14 +51,8 @@ def carregar_dados(liga):
     except requests.exceptions.RequestException as e:
         return pd.DataFrame(), f"Erro de conexão: {str(e)}"
 
-liga = st.selectbox(
-    "Escolha a Liga:",
-    [
-        "soccer_brazil_campeonato",
-        "soccer_uefa_champs_league",
-        "soccer_epl"
-    ]
-)
+liga_nome = st.selectbox("Escolha a Liga:", list(ligas.keys()))
+liga = ligas[liga_nome]
 
 df, erro = carregar_dados(liga)
 
