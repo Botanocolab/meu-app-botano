@@ -1,22 +1,21 @@
 name: Rodar Robo de Coleta
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 * * * *'
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do codigo
-        uses: actions/checkout@v2
-      - name: Instalar Python
+      - uses: actions/checkout@v2
+      - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
-      - name: Instalar dependencias
-        run: pip install -r requirements.txt
-      - name: Rodar o robo
+      - name: Install dependencies
+        run: pip install requests supabase pandas
+      - name: Run script
         run: python bot_coleta.py
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
