@@ -11,7 +11,6 @@ SUPABASE_URL = "https://yovylzbqqulaiqfvugdg.supabase.co"
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-
 @st.cache_data(ttl=60)
 def carregar_dados(liga):
     api_key = st.secrets.get("ODDS_API_KEY")
@@ -22,7 +21,7 @@ def carregar_dados(liga):
     url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
     params = {
         "apiKey": api_key,
-        "regions": "eu",   # trocado de br para eu
+        "regions": "eu",
         "markets": "h2h",
         "oddsFormat": "decimal"
     }
@@ -36,7 +35,6 @@ def carregar_dados(liga):
                 return pd.DataFrame(data), None
             return pd.DataFrame(), "A API respondeu com sucesso, mas não retornou jogos para essa liga."
 
-        # tenta mostrar erro real da API
         try:
             erro_api = r.json()
         except Exception:
@@ -47,10 +45,13 @@ def carregar_dados(liga):
     except requests.exceptions.RequestException as e:
         return pd.DataFrame(), f"Erro de conexão: {str(e)}"
 
-
 liga = st.selectbox(
     "Escolha a Liga:",
-    ["soccer_brazil_serie_a", "soccer_uefa_champs_league", "soccer_epl"]
+    [
+        "soccer_brazil_campeonato",
+        "soccer_uefa_champs_league",
+        "soccer_epl"
+    ]
 )
 
 df, erro = carregar_dados(liga)
@@ -64,7 +65,7 @@ with col1:
         st.error(erro)
 
     if not df.empty:
-        colunas_visiveis = [c for c in ["home_team", "away_team", "commence_time", "bookmakers"] if c in df.columns]
+        colunas_visiveis = [c for c in ["home_team", "away_team", "commence_time"] if c in df.columns]
         if colunas_visiveis:
             st.dataframe(df[colunas_visiveis], use_container_width=True)
         else:
