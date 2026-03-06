@@ -11,7 +11,7 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados com Integração API
+# 2. Carregar Dados com Integração API e Cálculo de Valor
 def carregar_tudo(liga="soccer_brazil_serie_a"):
     api_key = st.secrets.get("ODDS_API_KEY")
     url_api = f"https://api.the-odds-api.com/v4/sports/{liga}/odds/?apiKey={api_key}&regions=br&markets=h2h"
@@ -30,7 +30,6 @@ def carregar_tudo(liga="soccer_brazil_serie_a"):
                             'odd_casa': bookie['markets'][0]['outcomes'][0]['price']
                         })
             df = pd.DataFrame(jogos_list)
-            # Cálculo de Valor (Value Bet)
             if not df.empty:
                 df['odd_media'] = df.groupby('evento')['odd_casa'].transform('mean')
                 df['valor_aposta'] = df['odd_casa'] - df['odd_media']
@@ -48,8 +47,30 @@ liga_escolhida = st.selectbox("Escolha a Liga para monitorar:", [
 ])
 df, df_historico = carregar_tudo(liga_escolhida)
 
-# 3. Tabela de Jogos
-st.subheader("Jogos Disponíveis (Foco em Valor)")
+# 3. Painel Sugestivo (O seu novo cérebro de decisões)
+st.subheader("💡 Sugestões de Valor (Alta Confiança)")
+if not df.empty and 'valor_aposta' in df.columns:
+    sugestoes = df[df['valor_aposta'] > 0.2].sort_values(by='valor_aposta', ascending=False)
+    if not sugestoes.empty:
+        for i, row in sugestoes.head(3).iterrows():
+            col_a, col_b = st.columns([3, 1])
+            col_a.info(f"Oportunidade em **{row['evento']}** | Casa: {row['time_casa']} | Odd: {row['odd_casa']} (Valor: +{row['valor_aposta']:.2f})")
+            if col_b.button(f"Aprovar Aposta #{i}"):
+                supabase.table("apostas_simuladas").insert({
+                    "evento": str(row['evento']),
+                    "valor_apostado": 10.0,
+                    "odd": float(row['odd_casa']),
+                    "status": "pendente"
+                }).execute()
+                st.success("Aposta enviada!")
+                st.rerun()
+    else:
+        st.info("Nenhuma oportunidade extrema encontrada no momento.")
+else:
+    st.info("Carregando dados...")
+
+# 4. Tabela de Jogos
+st.subheader("📜 Jogos Disponíveis")
 if not df.empty:
     casas = ["Todas"] + sorted(df['time_casa'].dropna().unique().tolist())
     filtro_casa = st.selectbox("Filtrar por Casa de Aposta:", casas)
@@ -59,10 +80,8 @@ if not df.empty:
         st.dataframe(df_exibir.style.background_gradient(subset=['valor_aposta'], cmap='RdYlGn'), use_container_width=True)
     else:
         st.dataframe(df_exibir, use_container_width=True)
-else:
-    st.info("Nenhum jogo disponível.")
 
-# 4. Simulador
+# 5. Simulador
 st.divider()
 st.subheader("🎯 Simulador de Apostas")
 with st.form("simulador_form"):
@@ -72,20 +91,14 @@ with st.form("simulador_form"):
     resultado = st.selectbox("Resultado da Aposta:", ["pendente", "ganha", "perdida"])
     if st.form_submit_button("Registrar Aposta"):
         supabase.table("apostas_simuladas").insert({"evento": str(evento_escolhido), "valor_apostado": float(valor), "odd": float(odd), "status": resultado}).execute()
-        st.success("Aposta registrada!")
         st.rerun()
 
-# 5. Histórico e Gráfico
+# 6. Histórico
 st.divider()
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("📜 Histórico de Simulações")
-    if not df_historico.empty: st.dataframe(df_historico, use_container_width=True)
-with col2:
-    st.subheader("📈 Evolução do seu Lucro")
-    if not df_historico.empty and 'status' in df_historico.columns:
-        df_final = df_historico[df_historico['status'].isin(['ganha', 'perdida'])].copy()
-        if not df_final.empty:
-            df_final['lucro'] = df_final.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], axis=1)
-            df_final['acumulado'] = df_final['lucro'].cumsum()
-            st.line_chart(df_final['acumulado'])
+st.subheader("📈 Evolução do seu Lucro")
+if not df_historico.empty and 'status' in df_historico.columns:
+    df_final = df_historico[df_historico['status'].isin(['ganha', 'perdida'])].copy()
+    if not df_final.empty:
+        df_final['lucro'] = df_final.apply(lambda x: (x['odd'] * x['valor_apostado']) - x['valor_apostado'] if x['status'] == 'ganha' else -x['valor_apostado'], axis=1)
+        df_final['acumulado'] = df_final['lucro'].cumsum()
+        st.line_chart(df_final['acumulado'])
