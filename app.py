@@ -17,14 +17,15 @@ try:
     df = pd.DataFrame(response.data)
 
     if not df.empty:
-        # Lógica da simulação: Cálculo de Lucro/Prejuízo
+        # Lógica da simulação
         def calcular_resultado(row):
-            status = str(row.get('resultado')).lower()
-            valor = float(row.get('valor_investido', 0))
+            status = str(row.get('resultado')).lower().strip()
+            # Garante que o valor é numérico
+            try:
+                valor = float(row.get('valor_investido', 0))
+            except:
+                valor = 0.0
             
-            # Regra da simulação: 
-            # Se Green, lucro de 90% (ajuste conforme sua estratégia)
-            # Se Red, perda total do valor investido
             if status == 'green':
                 return valor * 0.9
             elif status == 'red':
@@ -32,19 +33,22 @@ try:
             else:
                 return 0.0
 
-        # Aplica a simulação em cada linha
+        # Aplica o cálculo
         df['lucro_simulado'] = df.apply(calcular_resultado, axis=1)
         
-        # Exibição do Saldo Acumulado (Simulação)
+        # Exibição do Saldo Acumulado
         total_acumulado = df['lucro_simulado'].sum()
         st.metric("Saldo da Simulação (R$)", f"{total_acumulado:.2f}")
         
-        # Tabela completa com a simulação
+        # Exibe a tabela forçando a inclusão de todas as colunas relevantes
         st.subheader("Histórico de Apostas e Simulação")
-        st.dataframe(df[['evento', 'valor_investido', 'resultado', 'lucro_simulado']])
+        
+        # Usamos uma lista explícita para garantir a ordem e a exibição
+        colunas_exibir = ['evento', 'valor_investido', 'resultado', 'lucro_simulado']
+        st.dataframe(df[colunas_exibir], use_container_width=True)
         
     else:
-        st.warning("A tabela está vazia. Adicione apostas no Supabase para ver a simulação.")
+        st.warning("A tabela está vazia. Adicione apostas no Supabase.")
 
 except Exception as e:
     st.error(f"Erro ao conectar ou ler dados: {e}")
