@@ -10,7 +10,7 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados sem Cache para garantir atualização em tempo real
+# 2. Carregar Dados
 def carregar_tudo():
     jogos = supabase.table("apostas").select("*").execute()
     historico = supabase.table("apostas_simuladas").select("*").execute()
@@ -18,10 +18,22 @@ def carregar_tudo():
 
 df, df_historico = carregar_tudo()
 
-# 3. Tabela de Jogos
+# 3. Tabela de Jogos com Filtro de Casa
+st.subheader("Jogos Disponíveis")
+
 if not df.empty:
-    st.subheader("Jogos Disponíveis")
-    st.dataframe(df[['evento', 'time_casa', 'odd_casa', 'created_at']], use_container_width=True)
+    # Lógica do Filtro
+    casas = ["Todas"] + sorted(df['casa_aposta'].dropna().unique().tolist())
+    filtro_casa = st.selectbox("Filtrar por Casa de Aposta:", casas)
+    
+    if filtro_casa != "Todas":
+        df_exibir = df[df['casa_aposta'] == filtro_casa]
+    else:
+        df_exibir = df
+        
+    st.dataframe(df_exibir[['evento', 'time_casa', 'odd_casa', 'casa_aposta', 'created_at']], use_container_width=True)
+else:
+    st.info("Nenhum jogo disponível no momento.")
 
 # 4. Simulador
 st.divider()
@@ -40,7 +52,7 @@ with st.form("simulador_form"):
             "odd": float(odd), 
             "status": resultado
         }).execute()
-        st.success("Aposta registrada com sucesso!")
+        st.success("Aposta registrada!")
         st.rerun()
 
 # 5. Histórico e Gráfico
@@ -65,3 +77,6 @@ with col2:
             st.line_chart(df_final['acumulado'])
         else:
             st.info("Aguardando apostas finalizadas.")
+
+if st.button('Recarregar Tudo'):
+    st.rerun()
