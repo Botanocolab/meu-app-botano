@@ -10,13 +10,12 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Botano+ nas bets", layout="wide")
 st.title("📊 Botano+ nas bets")
 
-# 2. Carregar Dados de Jogos
+# 2. Funções de Carregamento
 @st.cache_data(ttl=60)
 def carregar_jogos():
     response = supabase.table("apostas").select("*").execute()
     return pd.DataFrame(response.data)
 
-# 3. Carregar Histórico de Simulações
 @st.cache_data(ttl=60)
 def carregar_historico():
     response = supabase.table("apostas_simuladas").select("*").execute()
@@ -25,7 +24,7 @@ def carregar_historico():
 df = carregar_jogos()
 df_historico = carregar_historico()
 
-# Exibir Tabela de Jogos
+# 3. Exibir Tabela de Jogos
 if not df.empty:
     st.subheader("Jogos Disponíveis")
     def destacar_odds(val):
@@ -38,7 +37,7 @@ if not df.empty:
     )
     st.dataframe(tabela_estilizada, use_container_width=True)
 
-# 4. Formulário de Simulação
+# 4. Simulador
 st.divider()
 st.subheader("🎯 Simulador de Apostas")
 with st.form("simulador_form"):
@@ -53,14 +52,26 @@ with st.form("simulador_form"):
         st.success("Simulação registrada!")
         st.rerun()
 
-# 5. Exibir Histórico de Simulações
+# 5. Histórico e Gráfico
 st.divider()
-st.subheader("📜 Histórico de Simulações")
-if not df_historico.empty:
-    # Mostra o histórico
-    st.dataframe(df_historico, use_container_width=True)
-else:
-    st.info("Nenhuma aposta simulada ainda.")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("📜 Histórico de Simulações")
+    if not df_historico.empty:
+        st.dataframe(df_historico, use_container_width=True)
+    else:
+        st.info("Nenhuma aposta ainda.")
+
+with col2:
+    st.subheader("📈 Evolução do seu Lucro")
+    if not df_historico.empty:
+        # Cálculo de Lucro: (Odd * Valor) - Valor
+        df_historico['lucro'] = (df_historico['odd'] * df_historico['valor_apostado']) - df_historico['valor_apostado']
+        df_historico['acumulado'] = df_historico['lucro'].cumsum()
+        st.line_chart(df_historico['acumulado'])
+    else:
+        st.info("O gráfico aparecerá após sua primeira aposta.")
 
 if st.button('Recarregar Tudo'):
     st.cache_data.clear()
