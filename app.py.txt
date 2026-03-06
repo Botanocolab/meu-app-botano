@@ -1,0 +1,17 @@
+import streamlit as st
+from supabase import create_client
+
+# Configurações do Supabase
+url = 'https://yovylzbqqulaiqfvugdg.supabase.co'
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
+
+st.title("⚽ Botano+ : Painel de Valor")
+
+# Busca os dados
+response = supabase.table("apostas").select("*").execute()
+dados = response.data
+
+# Exibe em tabela
+st.write("Oportunidades com menor margem:")
+st.table(dados)
