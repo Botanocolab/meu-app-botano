@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 import streamlit as st
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 from supabase import create_client
 
@@ -65,10 +65,6 @@ color:#FFD166;
 font-weight:800;
 }
 
-.botano-button{
-margin-top:10px;
-}
-
 div.stButton > button{
 background:linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%)!important;
 color:white!important;
@@ -93,10 +89,12 @@ border-radius:16px;
 padding:16px;
 text-align:center;
 }
+
 .metric-title{
 color:#aaa;
 font-size:12px;
 }
+
 .metric-value{
 font-size:26px;
 font-weight:800;
@@ -113,15 +111,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================
-# LIGAS
+# FILTROS
 # =====================================
+colf1, colf2 = st.columns(2)
+
 ligas = {
 "Brasileirão Série A": "soccer_brazil_campeonato",
 "Premier League": "soccer_epl",
 "Champions League": "soccer_uefa_champs_league"
 }
 
-liga_nome = st.selectbox("Liga", list(ligas.keys()))
+with colf1:
+    liga_nome = st.selectbox("Liga", list(ligas.keys()))
+
+with colf2:
+    filtro_hoje = st.checkbox("Mostrar apenas jogos de hoje", value=True)
+
 liga_api = ligas[liga_nome]
 
 # =====================================
@@ -136,7 +141,8 @@ def buscar_odds(liga):
         "apiKey":ODDS_API_KEY,
         "regions":"eu,uk",
         "markets":"h2h",
-        "oddsFormat":"decimal"
+        "oddsFormat":"decimal",
+        "dateFormat":"iso"
     }
 
     try:
@@ -169,6 +175,8 @@ def extrair_oportunidades(df):
 
         home=row["home_team"]
         away=row["away_team"]
+        commence=row["commence_time"]
+
         bookmakers=row["bookmakers"]
 
         melhores_odds={}
@@ -202,7 +210,6 @@ def extrair_oportunidades(df):
 
             fair_prob=1/avg_odd
             ev=(fair_prob*best_odd)-1
-
             ev_percent=round(ev*100,2)
 
             if ev_percent<1:
@@ -223,7 +230,8 @@ def extrair_oportunidades(df):
                 "ev":ev_percent,
                 "stake_pct":stake_pct,
                 "stake_valor":stake_valor,
-                "casa":casa[outcome]
+                "casa":casa[outcome],
+                "commence":commence
             })
 
     df_op=pd.DataFrame(oportunidades)
@@ -242,41 +250,54 @@ df_odds,erro=buscar_odds(liga_api)
 df_op=extrair_oportunidades(df_odds)
 
 # =====================================
-# METRICAS
+# FILTRO HOJE
 # =====================================
-col1,col2,col3=st.columns(3)
+if filtro_hoje and not df_op.empty:
 
-with col1:
-    st.markdown(f"""
-    <div class="metric-box">
-    <div class="metric-title">BANKROLL</div>
-    <div class="metric-value">R$ {BANKROLL}</div>
-    </div>
-    """,unsafe_allow_html=True)
+    hoje=datetime.utcnow().date()
+
+    def jogo_hoje(data):
+        try:
+            dt=datetime.fromisoformat(data.replace("Z","+00:00"))
+            return dt.date()==hoje
+        except:
+            return False
+
+    df_op=df_op[df_op["commence"].apply(jogo_hoje)]
+
+# =====================================
+# METRICA
+# =====================================
+st.markdown(f"""
+<div class="metric-box">
+<div class="metric-title">BANKROLL</div>
+<div class="metric-value">R$ {BANKROLL}</div>
+</div>
+""",unsafe_allow_html=True)
 
 # =====================================
 # OPORTUNIDADES
 # =====================================
-st.subheader("🔥 Oportunidades de Valor Agora")
+st.subheader("🔥 Oportunidades de Valor")
 
 if erro:
     st.error(erro)
 
 elif df_op.empty:
-    st.info("Nenhuma oportunidade encontrada no momento")
+    st.info("Nenhuma oportunidade encontrada")
 
 else:
 
-    for i,row in df_op.head(15).iterrows():
+    for i,row in df_op.head(20).iterrows():
 
         st.markdown(f"""
         <div class="botano-card">
         <div class="botano-titulo">{row['evento']}</div>
         <div class="botano-metric"><b>Entrada:</b> {row['selecao']}</div>
-        <div class="botano-metric"><b>Melhor odd:</b> {row['odd']} | Casa: {row['casa']}</div>
-        <div class="botano-metric"><b>Odd média:</b> {row['odd_media']}</div>
+        <div class="botano-metric"><b>Casa:</b> {row['casa']}</div>
+        <div class="botano-metric"><b>Melhor odd:</b> {row['odd']} | Média: {row['odd_media']}</div>
         <div class="botano-metric"><b>EV:</b> <span class="botano-ev">{row['ev']}%</span></div>
-        <div class="botano-metric"><b>Stake recomendada:</b> <span class="botano-highlight">{row['stake_pct']}% da banca</span></div>
+        <div class="botano-metric"><b>Stake:</b> <span class="botano-highlight">{row['stake_pct']}% da banca</span></div>
         </div>
         """,unsafe_allow_html=True)
 
@@ -329,7 +350,7 @@ if "confirmar" in st.session_state:
             del st.session_state["confirmar"]
 
     with colB:
-        st.link_button("Abrir casa de aposta", "https://www.google.com/search?q="+aposta["casa"])
+        st.link_button("Abrir casa de aposta","https://www.google.com/search?q="+aposta["casa"])
 
 # =====================================
 # HISTORICO
