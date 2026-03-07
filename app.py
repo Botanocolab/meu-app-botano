@@ -26,9 +26,6 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 if "pagina" not in st.session_state:
     st.session_state["pagina"] = "painel"
 
-if "aposta_carregada" not in st.session_state:
-    st.session_state["aposta_carregada"] = None
-
 def abrir_glossario():
     st.session_state["pagina"] = "glossario"
 
@@ -58,10 +55,7 @@ p, span, label, div {
     color: white;
 }
 
-section[data-testid="stSidebar"] {
-    background: #101010;
-}
-
+/* ===== BOTÕES ===== */
 div.stButton > button{
     background: linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%) !important;
     color: white !important;
@@ -86,6 +80,7 @@ div.stButton > button:active{
     box-shadow: none !important;
 }
 
+/* ===== MÉTRICAS ===== */
 [data-testid="stMetric"]{
     background:#161616;
     border:1px solid #2a2a2a;
@@ -103,22 +98,63 @@ div.stButton > button:active{
     font-weight:800 !important;
 }
 
-div[data-baseweb="select"] > div,
-div[data-baseweb="input"] > div,
-div[data-testid="stNumberInput"] input {
+/* ===== INPUTS / SELECTS ===== */
+.stSelectbox label,
+.stCheckbox label,
+.stNumberInput label,
+.stTextInput label {
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+/* Caixa fechada do select */
+div[data-baseweb="select"] > div {
+    background: #1b1b1b !important;
+    border: 1px solid #333 !important;
+    color: white !important;
+}
+
+/* Texto do valor selecionado */
+div[data-baseweb="select"] span {
+    color: white !important;
+}
+
+/* Dropdown aberto */
+ul[role="listbox"] {
+    background: #1a1a1a !important;
+    color: white !important;
+    border: 1px solid #333 !important;
+}
+
+ul[role="listbox"] li {
+    background: #1a1a1a !important;
+    color: white !important;
+}
+
+ul[role="listbox"] li:hover {
+    background: #2b2b2b !important;
+    color: white !important;
+}
+
+/* Inputs numéricos e texto */
+div[data-baseweb="input"] > div {
     background:#1b1b1b !important;
     color:white !important;
     border:1px solid #333 !important;
 }
 
-div[data-baseweb="select"] * {
+input {
     color:white !important;
+    -webkit-text-fill-color: white !important;
+    background: transparent !important;
 }
 
-input, textarea {
-    color:white !important;
+/* Checkbox */
+input[type="checkbox"] {
+    accent-color: #ff6a00;
 }
 
+/* ===== CARDS ===== */
 .botano-card{
     background:#1c1c1c;
     border:1px solid #2c2c2c;
@@ -133,13 +169,40 @@ input, textarea {
     color:#ff5a2a;
     font-size:22px;
     font-weight:800;
-    margin-bottom:8px;
+    margin-bottom:10px;
 }
 
 .botano-sub{
-    color:#d7d7d7;
-    font-size:14px;
-    margin-bottom:10px;
+    color:#d7d7d7 !important;
+    font-size:15px;
+    margin-bottom:12px;
+}
+
+.botano-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap:10px;
+    margin-top:12px;
+}
+
+.botano-item{
+    background:#151515;
+    border:1px solid #2b2b2b;
+    border-radius:12px;
+    padding:10px 12px;
+}
+
+.botano-item-label{
+    color:#a9a9a9 !important;
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:4px;
+}
+
+.botano-item-value{
+    color:white !important;
+    font-size:18px;
+    font-weight:800;
 }
 
 .badge{
@@ -155,21 +218,28 @@ input, textarea {
 .badge-ev{
     background:#2b1a12;
     border:1px solid #ff7a1a;
-    color:#ffb38a;
+    color:#ffb38a !important;
 }
 
 .badge-score{
     background:#171f15;
     border:1px solid #4caf50;
-    color:#b9f2c1;
+    color:#b9f2c1 !important;
 }
 
 .badge-stake{
     background:#151d24;
     border:1px solid #4ea3ff;
-    color:#a8d3ff;
+    color:#a8d3ff !important;
 }
 
+.badge-conf{
+    background:#211825;
+    border:1px solid #bb86fc;
+    color:#d9b8ff !important;
+}
+
+/* ===== GLOSSÁRIO ===== */
 .gloss-card{
     background:#181818;
     border:1px solid #2c2c2c;
@@ -188,17 +258,9 @@ input, textarea {
 }
 
 .gloss-text{
-    color:white;
+    color:white !important;
     font-size:16px;
     line-height:1.7;
-}
-
-.sim-card{
-    background:#161616;
-    border:1px solid #2b2b2b;
-    border-radius:18px;
-    padding:18px;
-    margin-bottom:16px;
 }
 
 hr{
@@ -440,13 +502,13 @@ if filtro_hoje and not df_op.empty:
     df_op = df_op[df_op["commence"].apply(hoje_filter)]
 
 # =====================================
-# HISTÓRICO
+# HISTÓRICO BASE
 # =====================================
 hist = supabase.table("apostas_simuladas").select("*").execute()
 df_hist = pd.DataFrame(hist.data)
 
 if df_hist.empty:
-    df_hist = pd.DataFrame(columns=["id", "stake", "odd", "resultado"])
+    df_hist = pd.DataFrame(columns=["id", "stake", "odd", "resultado", "evento"])
 
 # =====================================
 # CÁLCULO DE BANCA
@@ -485,6 +547,8 @@ m2.metric("Lucro Total", f"R$ {round(lucro_total, 2)}")
 m3.metric("ROI", f"{round(roi, 2)}%")
 m4.metric("Winrate", f"{round(winrate, 1)}%")
 
+st.markdown("---")
+
 # =====================================
 # SIMULADOR RÁPIDO
 # =====================================
@@ -492,20 +556,14 @@ st.markdown("### 🎯 Simulador Rápido")
 
 sim1, sim2, sim3 = st.columns([3, 1, 1])
 
-aposta_carregada = st.session_state.get("aposta_carregada")
-
-evento_default = aposta_carregada["evento"] if aposta_carregada else ""
-odd_default = float(aposta_carregada["odd"]) if aposta_carregada else 2.00
-stake_default = float(aposta_carregada["stake_valor"]) if aposta_carregada else 20.00
-
 with sim1:
-    evento_sim = st.text_input("Evento carregado", value=evento_default)
+    evento_sim = st.text_input("Evento", value="")
 
 with sim2:
-    odd_sim = st.number_input("Odd", min_value=1.01, value=odd_default, step=0.01)
+    odd_sim = st.number_input("Odd", min_value=1.01, value=2.00, step=0.01)
 
 with sim3:
-    stake_sim = st.number_input("Stake (R$)", min_value=1.0, value=stake_default, step=1.0)
+    stake_sim = st.number_input("Stake (R$)", min_value=1.0, value=20.0, step=1.0)
 
 lucro_potencial = round(stake_sim * (odd_sim - 1), 2)
 retorno_total = round(stake_sim * odd_sim, 2)
@@ -537,43 +595,44 @@ else:
             <span class="badge badge-ev">EV {row['ev']}%</span>
             <span class="badge badge-score">Score {row['score_botano']}</span>
             <span class="badge badge-stake">Stake {row['stake_pct']}% (R$ {row['stake_valor']})</span>
+            <span class="badge badge-conf">Confiança {row['confianca']}</span>
 
-            <br><br>
-
-            Melhor odd: <b>{row['odd']}</b> &nbsp;&nbsp;|&nbsp;&nbsp;
-            Odd média: <b>{row['odd_media']}</b> &nbsp;&nbsp;|&nbsp;&nbsp;
-            Prob. justa: <b>{row['fair_prob']}%</b> &nbsp;&nbsp;|&nbsp;&nbsp;
-            Confiança: <b>{row['confianca']}</b>
+            <div class="botano-grid">
+                <div class="botano-item">
+                    <div class="botano-item-label">Melhor odd</div>
+                    <div class="botano-item-value">{row['odd']}</div>
+                </div>
+                <div class="botano-item">
+                    <div class="botano-item-label">Odd média</div>
+                    <div class="botano-item-value">{row['odd_media']}</div>
+                </div>
+                <div class="botano-item">
+                    <div class="botano-item-label">Probabilidade justa</div>
+                    <div class="botano-item-value">{row['fair_prob']}%</div>
+                </div>
+                <div class="botano-item">
+                    <div class="botano-item-label">Stake sugerida</div>
+                    <div class="botano-item-value">R$ {row['stake_valor']}</div>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        a1, a2 = st.columns(2)
-
-        with a1:
-            if st.button("🟧 Apostar", key=f"apostar_{i}"):
-                payload = {
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "evento": row["evento"],
-                    "selecao": row["selecao"],
-                    "odd": float(row["odd"]),
-                    "stake": float(row["stake_valor"]),
-                    "ev": float(row["ev"]),
-                    "score_botano": float(row["score_botano"]),
-                    "casa": row["casa"],
-                    "resultado": "pendente"
-                }
-                supabase.table("apostas_simuladas").insert(payload).execute()
-                st.success("Aposta registrada no histórico.")
-
-        with a2:
-            if st.button("📥 Carregar no simulador", key=f"simular_{i}"):
-                st.session_state["aposta_carregada"] = {
-                    "evento": row["evento"],
-                    "odd": float(row["odd"]),
-                    "stake_valor": float(row["stake_valor"])
-                }
-                st.success("Aposta carregada no simulador. Confira o bloco acima.")
-                st.rerun()
+        if st.button("🟧 Apostar no simulador", key=f"apostar_{i}"):
+            payload = {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "evento": row["evento"],
+                "selecao": row["selecao"],
+                "odd": float(row["odd"]),
+                "stake": float(row["stake_valor"]),
+                "ev": float(row["ev"]),
+                "score_botano": float(row["score_botano"]),
+                "casa": row["casa"],
+                "resultado": "pendente"
+            }
+            supabase.table("apostas_simuladas").insert(payload).execute()
+            st.success("Aposta adicionada ao simulador / histórico.")
+            st.rerun()
 
 # =====================================
 # HISTÓRICO
