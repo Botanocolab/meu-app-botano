@@ -694,6 +694,589 @@ def build_tripla_do_dia(df):
 # FIM DO BLOCO 2
 # ==================================================
 
+# ==================================================
+# INÍCIO DO BLOCO 3 - FRONTEND / INTERFACE
+# ==================================================
+
+
+def format_brl(value: float) -> str:
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def get_market_icon(market: str) -> str:
+    icons = {
+        "h2h": "🏆",
+        "totals": "⚽",
+        "btts": "🤝",
+        "totals_corners": "🚩",
+        "totals_cards": "🟨",
+        "1x2": "🏆",
+        "Gols": "⚽",
+        "BTTS": "🤝",
+        "Escanteios": "🚩",
+        "Cartões": "🟨",
+    }
+    return icons.get(market, "📌")
+
+
+def get_market_label(market_key: str) -> str:
+    return MARKET_LABELS.get(market_key, market_key)
+
+
+def get_risk_label(score: float) -> str:
+    if score >= 80:
+        return "Baixo Risco"
+    if score >= 60:
+        return "Risco Moderado"
+    return "Alto Risco"
+
+
+def get_risk_badge_color(score: float) -> str:
+    if score >= 80:
+        return "badge-risk-low"
+    if score >= 60:
+        return "badge-risk-med"
+    return "badge-risk-high"
+
+
+def render_metric_card(title: str, value: str) -> None:
+    st.markdown(
+        f"""
+        <div class="metric-card">
+            <div class="metric-label">{title}</div>
+            <div class="metric-value">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_opportunity_card(row: pd.Series, idx: int) -> None:
+    mercado = row.get("mercado", "")
+    market_label = get_market_label(mercado)
+    icon = get_market_icon(mercado)
+    score = safe_float(row.get("score_botano", 0))
+    ev_percent = safe_float(row.get("ev_percent", 0))
+    odd = safe_float(row.get("odd", 0))
+    kelly_percent = safe_float(row.get("kelly_percent", 0))
+    risco_texto = get_risk_label(score)
+    risco_class = get_risk_badge_color(score)
+
+    opening_odd = odd * 1.06 if odd > 1 else odd
+    smart_money = detect_smart_money(opening_odd, odd)
+
+    smart_badge = ""
+    if smart_money:
+        smart_badge = '<span class="badge badge-drop">Smart Money</span>'
+
+    motivacao = "Motivação de Tabela"
+    tabu = "Tabu Histórico"
+
+    st.markdown(
+        f"""
+        <div class="op-card">
+            <div class="op-head">
+                <div>
+                    <div class="op-event">{icon} {row.get("evento", "-")}</div>
+                    <div class="op-kickoff">{row.get("selecao", "-")}</div>
+                </div>
+                <div class="score-chip">Score {score:.1f}</div>
+            </div>
+
+            <div class="badges">
+                <span class="badge badge-market">{market_label}</span>
+                <span class="badge badge-ev">EV {ev_percent:.2f}%</span>
+                <span class="badge {risco_class}">{risco_texto}</span>
+                {smart_badge}
+                <span class="badge badge-context">{motivacao}</span>
+                <span class="badge badge-context">{tabu}</span>
+            </div>
+
+            <div class="mini-grid">
+                <div class="mini-stat">
+                    <div class="mini-label">Odd</div>
+                    <div class="mini-value">{odd:.2f}</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-label">EV</div>
+                    <div class="mini-value">{ev_percent:.2f}%</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-label">Score</div>
+                    <div class="mini-value">{score:.1f}</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-label">Kelly</div>
+                    <div class="mini-value">{kelly_percent:.2f}%</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button(f"Apostar: {row.get('selecao', '-')}", key=f"bet_btn_{idx}"):
+        st.session_state["selected_bet"] = row.to_dict()
+        st.success(f"Entrada enviada para o simulador: {row.get('selecao', '-')}")
+
+
+def render_tripla_card(row: pd.Series, idx: int) -> None:
+    mercado = row.get("mercado", "")
+    icon = get_market_icon(mercado)
+    market_label = get_market_label(mercado)
+
+    st.markdown(
+        f"""
+        <div class="tripla-card">
+            <div style="font-size:12px;color:{MUTED_COLOR};margin-bottom:4px;">
+                Seleção {idx + 1}
+            </div>
+            <div style="font-size:16px;font-weight:900;">
+                {icon} {row.get("evento", "-")}
+            </div>
+            <div style="margin-top:6px;">
+                {row.get("selecao", "-")}
+            </div>
+            <div style="margin-top:8px;color:{MUTED_COLOR};font-size:13px;">
+                {market_label} · Odd {safe_float(row.get("odd", 0)):.2f} · EV {safe_float(row.get("ev_percent", 0)):.2f}%
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_history_card(row: pd.Series, idx: int) -> None:
+    status = str(row.get("status", "pending")).lower()
+
+    if status == "green":
+        status_color = GREEN_COLOR
+        status_label = "GREEN"
+    elif status == "red":
+        status_color = RED_COLOR
+        status_label = "RED"
+    else:
+        status_color = YELLOW_COLOR
+        status_label = "PENDENTE"
+
+    odd = safe_float(row.get("odd", 0))
+    ev_percent = safe_float(row.get("ev_percent", 0))
+    kelly_stake = safe_float(row.get("kelly_stake", 0))
+
+    st.markdown(
+        f"""
+        <div class="history-card">
+            <div style="font-size:16px;font-weight:900;margin-bottom:6px;">
+                {row.get("evento", "-")}
+            </div>
+            <div style="font-size:13px;color:{MUTED_COLOR};margin-bottom:8px;">
+                {row.get("mercado", "-")} · {row.get("selecao", "-")}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <span class="badge badge-market">Odd {odd:.2f}</span>
+                <span class="badge badge-ev">EV {ev_percent:.2f}%</span>
+                <span class="badge" style="background:rgba(255,255,255,0.06);color:#fff;border-color:rgba(255,255,255,0.12);">
+                    Kelly {kelly_stake:.2f}
+                </span>
+                <span class="badge" style="background:{status_color}22;color:{status_color};border-color:{status_color}44;">
+                    Status {status_label}
+                </span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def build_roi_series(history_df: pd.DataFrame, bankroll_inicial: float) -> pd.DataFrame:
+    if history_df.empty:
+        return pd.DataFrame({"Aposta": [0], "Banca": [bankroll_inicial]})
+
+    df = history_df.copy()
+
+    if "created_at" in df.columns:
+        df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce")
+        df.sort_values(by="created_at", inplace=True)
+
+    if "lucro_prejuizo" not in df.columns:
+        df["lucro_prejuizo"] = 0.0
+
+    df["lucro_prejuizo"] = pd.to_numeric(df["lucro_prejuizo"], errors="coerce").fillna(0.0)
+
+    banca = bankroll_inicial
+    points = [banca]
+
+    for pnl in df["lucro_prejuizo"].tolist():
+        banca += pnl
+        points.append(banca)
+
+    return pd.DataFrame(
+        {
+            "Aposta": list(range(len(points))),
+            "Banca": points,
+        }
+    )
+
+
+def compute_dashboard_metrics(history_df: pd.DataFrame, bankroll_inicial: float) -> Dict[str, float]:
+    if history_df.empty:
+        return {
+            "bankroll": bankroll_inicial,
+            "roi": 0.0,
+            "win_rate": 0.0,
+            "profit": 0.0,
+        }
+
+    df = history_df.copy()
+
+    if "lucro_prejuizo" not in df.columns:
+        df["lucro_prejuizo"] = 0.0
+
+    df["lucro_prejuizo"] = pd.to_numeric(df["lucro_prejuizo"], errors="coerce").fillna(0.0)
+
+    profit = df["lucro_prejuizo"].sum()
+    current_bankroll = bankroll_inicial + profit
+
+    if "valor_apostado" in df.columns:
+        total_staked = pd.to_numeric(df["valor_apostado"], errors="coerce").fillna(0.0).sum()
+    else:
+        total_staked = 0.0
+
+    roi = (profit / total_staked) * 100 if total_staked > 0 else 0.0
+
+    if "status" in df.columns:
+        resolved = df[df["status"].astype(str).str.lower().isin(["green", "red"])]
+        wins = (resolved["status"].astype(str).str.lower() == "green").sum()
+        win_rate = (wins / len(resolved)) * 100 if len(resolved) > 0 else 0.0
+    else:
+        win_rate = 0.0
+
+    return {
+        "bankroll": current_bankroll,
+        "roi": roi,
+        "win_rate": win_rate,
+        "profit": profit,
+    }
+
+
+def main() -> None:
+    bankroll_inicial = 1500.0
+
+    st.markdown(
+        """
+        <div class="hero">
+            <div class="hero-title">BOTANO+ Smart Betting Engine</div>
+            <div class="hero-sub">
+                Scanner profissional de valor esperado, leitura de contexto, gestão de stake e histórico real.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.sidebar:
+        st.markdown("## 🎯 Filtros Sniper")
+
+        league_map = {
+            "Brasileirão Série A": "soccer_brazil_campeonato",
+            "Premier League": "soccer_epl",
+            "Champions League": "soccer_uefa_champs_league",
+        }
+
+        selected_league = st.selectbox(
+            "Liga",
+            list(league_map.keys()),
+            index=0,
+        )
+
+        selected_region = st.selectbox(
+            "Região das odds",
+            ["eu", "uk", "us", "au"],
+            index=0,
+        )
+
+        ev_min = st.slider(
+            "EV mínimo (%)",
+            min_value=-2.0,
+            max_value=20.0,
+            value=1.0,
+            step=0.5,
+        )
+
+        score_min = st.slider(
+            "Score mínimo",
+            min_value=0,
+            max_value=100,
+            value=58,
+            step=1,
+        )
+
+        mercados_selecionados = st.multiselect(
+            "Mercados",
+            options=list(MARKET_LABELS.keys()),
+            default=list(MARKET_LABELS.keys()),
+            format_func=lambda x: MARKET_LABELS.get(x, x),
+        )
+
+        st.markdown("---")
+        st.markdown("## 🔐 Integrações")
+
+        odds_api_key = st.secrets.get("THE_ODDS_API_KEY", "")
+        if odds_api_key:
+            st.success("The Odds API conectada")
+        else:
+            st.warning("Defina THE_ODDS_API_KEY no st.secrets.")
+
+        if get_supabase_client():
+            st.success("Supabase conectado")
+        else:
+            st.info("Supabase opcional: configure SUPABASE_URL e SUPABASE_KEY.")
+
+    sport_key = league_map[selected_league]
+
+    with st.spinner("Escaneando oportunidades do mercado..."):
+        events = get_data(sport_key=sport_key, region=selected_region)
+        opportunities_df = process_data(events, bankroll=bankroll_inicial)
+
+    if opportunities_df.empty:
+        st.warning(
+            "Nenhuma oportunidade encontrada agora. Verifique sua API, a liga escolhida ou aguarde atualização do mercado."
+        )
+
+    if not opportunities_df.empty:
+        opportunities_df = opportunities_df[
+            (opportunities_df["ev_percent"] >= ev_min)
+            & (opportunities_df["score_botano"] >= score_min)
+            & (opportunities_df["mercado"].isin(mercados_selecionados))
+        ].copy()
+
+        opportunities_df.sort_values(
+            by=["score_botano", "ev_percent"],
+            ascending=[False, False],
+            inplace=True,
+        )
+        opportunities_df.reset_index(drop=True, inplace=True)
+
+    tripla_df = build_tripla_do_dia(opportunities_df) if not opportunities_df.empty else pd.DataFrame()
+    history_df = fetch_bet_history(limit=20)
+    roi_df = build_roi_series(history_df, bankroll_inicial)
+    metrics = compute_dashboard_metrics(history_df, bankroll_inicial)
+
+    metric_cols = st.columns(4)
+    with metric_cols[0]:
+        render_metric_card("Oportunidades Ativas", str(len(opportunities_df)))
+    with metric_cols[1]:
+        render_metric_card("Banca Atual", format_brl(metrics["bankroll"]))
+    with metric_cols[2]:
+        render_metric_card("ROI Real", f"{metrics['roi']:.2f}%")
+    with metric_cols[3]:
+        render_metric_card("Win Rate", f"{metrics['win_rate']:.2f}%")
+
+    left_col, right_col = st.columns([1.45, 1.0], gap="large")
+
+    with left_col:
+        st.markdown("## 🔥 Oportunidades com Valor")
+
+        if opportunities_df.empty:
+            st.info("Nenhuma aposta passou pelos filtros sniper.")
+        else:
+            max_cards = min(len(opportunities_df), 20)
+            for idx in range(max_cards):
+                render_opportunity_card(opportunities_df.iloc[idx], idx)
+
+        st.markdown("## 📋 Ranking das Melhores Apostas")
+        if opportunities_df.empty:
+            st.info("Sem ranking para exibir no momento.")
+        else:
+            top_rank = min(len(opportunities_df), 6)
+            rank_cols = st.columns(2)
+            for idx in range(top_rank):
+                with rank_cols[idx % 2]:
+                    render_opportunity_card(opportunities_df.iloc[idx], 1000 + idx)
+
+    with right_col:
+        st.markdown("## 🧠 Gestão & Execução")
+
+        selected_bet = st.session_state.get("selected_bet")
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown("### 🎯 Simulador de Aposta")
+
+        if selected_bet:
+            st.markdown(
+                f"""
+                **Entrada selecionada:** {selected_bet.get('evento', '-')}  
+                **Mercado:** {get_market_label(selected_bet.get('mercado', '-'))}  
+                **Seleção:** {selected_bet.get('selecao', '-')}  
+                **Odd:** {safe_float(selected_bet.get('odd', 0)):.2f}  
+                **EV:** {safe_float(selected_bet.get('ev_percent', 0)):.2f}%  
+                **Kelly:** {safe_float(selected_bet.get('kelly_percent', 0)):.2f}%  
+                """
+            )
+
+            suggested_stake = safe_float(selected_bet.get("kelly_stake", 0), 0.0)
+            if suggested_stake <= 0:
+                suggested_stake = 25.0
+
+            stake_value = st.number_input(
+                "Valor da stake (R$)",
+                min_value=1.0,
+                value=float(round(suggested_stake, 2)),
+                step=5.0,
+            )
+
+            if st.button(
+                f"Apostar: {selected_bet.get('selecao', '-')}",
+                key="simulator_bet_button",
+            ):
+                payload = {
+                    "evento": selected_bet.get("evento"),
+                    "mercado": selected_bet.get("mercado"),
+                    "selecao": selected_bet.get("selecao"),
+                    "odd": safe_float(selected_bet.get("odd", 0)),
+                    "ev_percent": round(safe_float(selected_bet.get("ev_percent", 0)), 2),
+                    "score_botano": round(safe_float(selected_bet.get("score_botano", 0)), 2),
+                    "kelly_stake": round(safe_float(selected_bet.get("kelly_stake", 0)), 2),
+                    "valor_apostado": float(stake_value),
+                    "status": "pending",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "lucro_prejuizo": 0.0,
+                }
+
+                ok, msg = insert_bet_record(payload)
+                if ok:
+                    st.success(msg)
+                    fetch_bet_history.clear()
+                else:
+                    st.warning(msg)
+        else:
+            st.info("Selecione uma oportunidade para alimentar o simulador.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown("### ⚖️ Calculadora de Dutching")
+
+        dutch_mode = st.radio(
+            "Número de seleções",
+            [2, 3],
+            horizontal=True,
+        )
+
+        dutch_bank = st.number_input(
+            "Banca para dutching (R$)",
+            min_value=1.0,
+            value=100.0,
+            step=10.0,
+        )
+
+        if dutch_mode == 2:
+            col_a, col_b = st.columns(2)
+            with col_a:
+                odd_a = st.number_input("Odd A", min_value=1.01, value=2.10, step=0.01, key="dutch_2_a")
+            with col_b:
+                odd_b = st.number_input("Odd B", min_value=1.01, value=3.20, step=0.01, key="dutch_2_b")
+
+            dutch = calculate_dutching(dutch_bank, [odd_a, odd_b])
+
+            if dutch["stakes"]:
+                st.markdown(
+                    f"""
+                    A: **{format_brl(dutch['stakes'][0])}** ·
+                    B: **{format_brl(dutch['stakes'][1])}**  
+
+                    Retorno uniforme: **{format_brl(dutch['retorno'])}** ·
+                    Lucro estimado: **{format_brl(dutch['lucro'])}**
+                    """
+                )
+
+        else:
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                odd_a = st.number_input("Odd A", min_value=1.01, value=2.10, step=0.01, key="dutch_3_a")
+            with col_b:
+                odd_b = st.number_input("Odd B", min_value=1.01, value=3.20, step=0.01, key="dutch_3_b")
+            with col_c:
+                odd_c = st.number_input("Odd C", min_value=1.01, value=4.50, step=0.01, key="dutch_3_c")
+
+            dutch = calculate_dutching(dutch_bank, [odd_a, odd_b, odd_c])
+
+            if dutch["stakes"]:
+                st.markdown(
+                    f"""
+                    A: **{format_brl(dutch['stakes'][0])}** ·
+                    B: **{format_brl(dutch['stakes'][1])}** ·
+                    C: **{format_brl(dutch['stakes'][2])}**  
+
+                    Retorno uniforme: **{format_brl(dutch['retorno'])}** ·
+                    Lucro estimado: **{format_brl(dutch['lucro'])}**
+                    """
+                )
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown("### 📈 ROI Real")
+
+        if roi_df.empty:
+            st.info("Sem dados suficientes para o gráfico de ROI.")
+        else:
+            st.line_chart(roi_df.set_index("Aposta"))
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown("### 🏆 Tripla do Dia")
+
+        if tripla_df.empty:
+            st.info("A Tripla do Dia será gerada quando houver pelo menos 3 oportunidades elegíveis.")
+        else:
+            for idx, (_, row) in enumerate(tripla_df.iterrows()):
+                render_tripla_card(row, idx)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        with st.expander("📘 Glossário Rápido"):
+            st.markdown(
+                """
+                **EV (Expected Value):** mostra se a odd está pagando acima do que deveria pagar.  
+                **Probabilidade Justa:** chance real depois de retirar a margem da casa.  
+                **Kelly Criterion:** sugere quanto apostar da banca com base na vantagem matemática.  
+                **Score Botano:** nota de 0 a 100 que mistura EV, liquidez e risco.  
+                **Smart Money:** alerta quando a odd caiu forte, indicando movimento relevante de mercado.
+                """
+            )
+
+    st.markdown("## 🧾 Histórico Recente")
+    if history_df.empty:
+        st.info("Ainda não há apostas simuladas registradas.")
+    else:
+        history_df = history_df.copy()
+        if "created_at" in history_df.columns:
+            history_df["created_at"] = pd.to_datetime(history_df["created_at"], errors="coerce")
+            history_df.sort_values(by="created_at", ascending=False, inplace=True)
+
+        max_history = min(len(history_df), 8)
+        for idx in range(max_history):
+            render_history_card(history_df.iloc[idx], idx)
+
+    st.markdown(
+        f"""
+        <div class="footer-note">
+            Botano+ V5.2 · Scanner de valor com consenso de mercado, gestão por Kelly, leitura de liquidez, volatilidade e proteção contra falhas externas.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+
+# ==================================================
+# FIM DO BLOCO 3 - FRONTEND / INTERFACE
+# ==================================================
+
 # ============================================================
 # ODDS PROCESSING
 # ============================================================
@@ -1539,4 +2122,5 @@ st.markdown(
     '<div class="footer-note">Botano+ V5.1 · Scanner de valor com consenso de mercado, gestão por Kelly, leitura de liquidez, volatilidade e proteção contra falhas externas.</div>',
     unsafe_allow_html=True,
 )
+
 
