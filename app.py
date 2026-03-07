@@ -22,22 +22,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================================
 st.markdown("""
 <style>
-
 .stApp{
 background:linear-gradient(180deg,#0b0b0c 0%,#141414 100%);
 color:white;
-}
-
-label{
-color:white!important;
-}
-
-p{
-color:white!important;
-}
-
-span{
-color:white!important;
 }
 
 h1,h2,h3{
@@ -62,7 +49,7 @@ margin-bottom:8px;
 }
 
 .botano-metric{
-color:white;
+color:#d0d0d0;
 font-size:14px;
 margin-bottom:6px;
 }
@@ -87,7 +74,7 @@ margin-bottom:20px;
 }
 
 .metric-title{
-color:white;
+color:#aaaaaa;
 font-size:12px;
 }
 
@@ -106,6 +93,11 @@ font-weight:700!important;
 width:100%!important;
 }
 
+label{
+color:white!important;
+font-weight:600;
+}
+
 .confirm-box{
 background:#171717;
 border:1px solid #2a2a2a;
@@ -113,7 +105,6 @@ border-radius:16px;
 padding:20px;
 margin-top:10px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,7 +112,7 @@ margin-top:10px;
 # HEADER
 # =====================================
 st.markdown("""
-<h1>⚡ BOTANO+ <span style='font-size:18px;color:white;font-weight:400'>Value Betting Engine</span></h1>
+<h1>⚡ BOTANO+ <span style='font-size:18px;color:#cfcfcf;font-weight:400'>Value Betting Engine</span></h1>
 """, unsafe_allow_html=True)
 
 # =====================================
@@ -316,20 +307,48 @@ else:
 
         if st.button("APOSTAR",key=f"apostar{i}"):
 
-            payload={
-                "created_at":datetime.now(timezone.utc).isoformat(),
-                "evento":row["evento"],
-                "selecao":row["selecao"],
-                "odd":row["odd"],
-                "stake":row["stake_valor"],
-                "ev":row["ev"],
-                "casa":row["casa"],
-                "resultado":"pendente"
-            }
+            st.session_state["confirmar"]=row.to_dict()
 
-            supabase.table("apostas_simuladas").insert(payload).execute()
+# =====================================
+# CONFIRMAR
+# =====================================
+if "confirmar" in st.session_state:
 
-            st.success("Aposta registrada")
+    aposta=st.session_state["confirmar"]
+
+    st.markdown("### Confirmar Aposta")
+
+    st.markdown(f"""
+    <div class="confirm-box">
+    <b>Evento:</b> {aposta['evento']} <br>
+    <b>Entrada:</b> {aposta['selecao']} <br>
+    <b>Casa:</b> {aposta['casa']} <br>
+    <b>Odd:</b> {aposta['odd']} <br>
+    <b>EV:</b> {aposta['ev']}% <br><br>
+
+    <b>Stake recomendada:</b> {aposta['stake_pct']}% da banca <br>
+    <b>Valor sugerido:</b> R$ {aposta['stake_valor']}
+    </div>
+    """,unsafe_allow_html=True)
+
+    if st.button("CONFIRMAR APOSTA"):
+
+        payload={
+            "created_at":datetime.now(timezone.utc).isoformat(),
+            "evento":aposta["evento"],
+            "selecao":aposta["selecao"],
+            "odd":aposta["odd"],
+            "stake":aposta["stake_valor"],
+            "ev":aposta["ev"],
+            "casa":aposta["casa"],
+            "resultado":"pendente"
+        }
+
+        supabase.table("apostas_simuladas").insert(payload).execute()
+
+        st.success("Aposta registrada")
+
+        del st.session_state["confirmar"]
 
 # =====================================
 # HISTORICO
@@ -340,7 +359,7 @@ hist=supabase.table("apostas_simuladas").select("*").execute()
 
 df_hist=pd.DataFrame(hist.data)
 
-if filtro_resultados and not df_hist.empty:
+if filtro_resultados:
     df_hist=df_hist[df_hist["resultado"]!="pendente"]
 
 if df_hist.empty:
@@ -354,12 +373,11 @@ else:
 
         col1.write(row["evento"])
         col2.write(f"Odd {row['odd']}")
-        col3.write(f"Stake {row.get('stake',0)}")
+        col3.write(f"Stake {row['stake']}")
 
         resultado=st.selectbox(
             "Resultado",
             ["pendente","green","red"],
-            index=["pendente","green","red"].index(row["resultado"]) if row["resultado"] in ["pendente","green","red"] else 0,
             key=f"res{i}"
         )
 
