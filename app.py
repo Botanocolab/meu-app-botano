@@ -1036,6 +1036,12 @@ def main() -> None:
 
     with st.spinner("Escaneando oportunidades do mercado..."):
     events = fetch_odds_data(
+        sport_key=sport_key,
+        api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
+        region=selected_region,
+    )
+    opportunities_df = process_data(events, bankroll=bankroll_inicial)
+    events = fetch_odds_data(
     sport_key=sport_key,
     api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
     region=selected_region,
@@ -2126,6 +2132,7 @@ st.markdown(
     '<div class="footer-note">Botano+ V5.1 · Scanner de valor com consenso de mercado, gestão por Kelly, leitura de liquidez, volatilidade e proteção contra falhas externas.</div>',
     unsafe_allow_html=True,
 )
+
 
 
 
