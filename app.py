@@ -24,86 +24,283 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================================
 st.markdown("""
 <style>
+:root{
+    --bg-1:#070707;
+    --bg-2:#111111;
+    --card:#181818;
+    --card-2:#1f1f1f;
+    --border:#2c2c2c;
+    --orange:#ff5a2a;
+    --orange-2:#ff7a1a;
+    --white:#ffffff;
+    --muted:#d5d5d5;
+    --green:#7CFFB2;
+    --yellow:#FFD166;
+    --red:#FF8FA3;
+}
+
 .stApp{
-    background:linear-gradient(180deg,#0b0b0c 0%,#141414 100%);
-    color:white;
+    background:linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 100%);
+    color:var(--white);
 }
-label,span,p,div{
-    color:white;
+
+.block-container{
+    padding-top:2rem;
+    padding-bottom:3rem;
 }
+
 h1,h2,h3{
-    color:#ff5a2a !important;
-    font-weight:800 !important;
+    color:var(--orange)!important;
+    font-weight:800!important;
+    letter-spacing:-0.02em;
 }
+
+p, span, label, div{
+    color:var(--white);
+}
+
+small{
+    color:var(--muted)!important;
+}
+
 .botano-card{
-    background:#1c1c1c;
-    border:1px solid #2c2c2c;
-    border-left:4px solid #ff5a2a;
-    border-radius:18px;
-    padding:18px;
-    margin-bottom:14px;
-    box-shadow:0 10px 24px rgba(0,0,0,0.28);
+    background:linear-gradient(180deg,#1b1b1b 0%, #171717 100%);
+    border:1px solid var(--border);
+    border-left:5px solid var(--orange);
+    border-radius:22px;
+    padding:22px;
+    margin-bottom:18px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.35);
 }
+
 .botano-title{
-    color:#ff5a2a;
-    font-size:22px;
+    color:var(--orange);
+    font-size:24px;
     font-weight:800;
-    margin-bottom:8px;
+    margin-bottom:12px;
 }
+
 .botano-sub{
-    color:#d6d6d6;
-    font-size:14px;
-    margin-bottom:6px;
+    color:var(--white);
+    font-size:15px;
+    margin-bottom:8px;
+    line-height:1.45;
 }
-.metric-wrap{
-    background:#161616;
-    border:1px solid #2a2a2a;
-    border-radius:18px;
-    padding:16px;
+
+.metric-box{
+    background:linear-gradient(180deg,#161616 0%, #121212 100%);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:18px;
     text-align:center;
     margin-bottom:10px;
+    min-height:104px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
 }
+
 .metric-title{
-    color:#cfcfcf;
+    color:var(--muted);
     font-size:12px;
     text-transform:uppercase;
-    letter-spacing:0.05em;
+    letter-spacing:0.08em;
+    margin-bottom:8px;
 }
+
 .metric-value{
-    color:white;
+    color:var(--white);
     font-size:22px;
     font-weight:800;
 }
+
 .section-title{
-    color:#ff5a2a;
+    color:var(--orange);
     font-size:20px;
     font-weight:800;
-    margin: 8px 0 12px 0;
+    margin: 12px 0 14px 0;
 }
+
 .ev{
-    color:#FFD166;
+    color:var(--yellow)!important;
     font-weight:800;
 }
+
 .good{
-    color:#7CFFB2;
+    color:var(--green)!important;
     font-weight:800;
 }
+
 .bad{
-    color:#FF8FA3;
+    color:var(--red)!important;
     font-weight:800;
 }
+
+.rank-card{
+    background:linear-gradient(180deg,#161616 0%,#121212 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:12px;
+}
+
+.rank-top{
+    display:flex;
+    justify-content:space-between;
+    gap:14px;
+    align-items:flex-start;
+    margin-bottom:10px;
+}
+
+.rank-event{
+    color:var(--white);
+    font-weight:800;
+    font-size:18px;
+    line-height:1.3;
+}
+
+.rank-badge{
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%);
+    color:white!important;
+    font-size:12px;
+    font-weight:800;
+    border-radius:999px;
+    padding:6px 10px;
+    white-space:nowrap;
+}
+
+.rank-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+}
+
+.rank-item{
+    background:#1d1d1d;
+    border:1px solid #2b2b2b;
+    border-radius:14px;
+    padding:10px 12px;
+}
+
+.rank-label{
+    color:#bdbdbd!important;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin-bottom:4px;
+}
+
+.rank-value{
+    color:white!important;
+    font-size:15px;
+    font-weight:700;
+}
+
+.filter-box{
+    background:linear-gradient(180deg,#141414 0%, #111111 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:14px;
+    margin-bottom:18px;
+}
+
+/* INPUTS / FILTROS */
+div[data-baseweb="select"] > div{
+    background:#1e1e1e!important;
+    color:white!important;
+    border:1px solid #444!important;
+    border-radius:14px!important;
+}
+
+div[data-baseweb="select"] *{
+    color:white!important;
+}
+
+div[data-baseweb="popover"] *{
+    color:#111!important;
+}
+
+div[data-testid="stNumberInput"] input{
+    background:#1e1e1e!important;
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    border-radius:14px!important;
+}
+
+div[data-testid="stNumberInput"] button{
+    background:#2a2a2a!important;
+    color:white!important;
+    border:none!important;
+}
+
+div[data-testid="stCheckbox"] label,
+div[data-testid="stCheckbox"] span,
+div[data-testid="stCheckbox"] p{
+    color:white!important;
+    font-weight:700!important;
+}
+
+div[data-testid="stCheckbox"] input{
+    accent-color:var(--orange)!important;
+}
+
+label[data-testid="stWidgetLabel"]{
+    color:white!important;
+    font-weight:800!important;
+}
+
+[data-testid="stSelectbox"] label,
+[data-testid="stNumberInput"] label,
+[data-testid="stCheckbox"] label{
+    color:white!important;
+    font-weight:800!important;
+}
+
+/* BUTTONS */
 div.stButton > button{
-    background:linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%) !important;
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%) !important;
     color:white !important;
     border:none !important;
     border-radius:14px !important;
     font-weight:800 !important;
     width:100% !important;
+    min-height:48px;
+    box-shadow:0 8px 18px rgba(255,90,42,0.18);
 }
-div[data-baseweb="select"] > div{
-    background:#232323 !important;
+
+div.stButton > button:hover{
+    filter:brightness(1.05)!important;
+}
+
+a[kind="secondary"]{
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%) !important;
     color:white !important;
+    border:none !important;
+    border-radius:14px !important;
+    font-weight:800 !important;
 }
+
+div.stLinkButton > a{
+    background:linear-gradient(135deg,var(--orange) 0%,var(--orange-2) 100%) !important;
+    color:white !important;
+    border:none !important;
+    border-radius:14px !important;
+    font-weight:800 !important;
+    text-decoration:none !important;
+}
+
+/* DATAFRAME */
+div[data-testid="stDataFrame"]{
+    border-radius:18px;
+    overflow:hidden;
+}
+
+div[data-testid="stExpander"] details{
+    background:#141414!important;
+    border:1px solid var(--border)!important;
+    border-radius:16px!important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -141,10 +338,6 @@ def normalize_result(v: str) -> str:
         return v
     return "pendente"
 
-def gaussian(x, mu, sigma):
-    sigma = max(0.35, sigma)
-    return math.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) / (sigma * math.sqrt(2 * math.pi))
-
 def poisson_prob(lmbda: float, k: int) -> float:
     try:
         return math.exp(-lmbda) * (lmbda ** k) / math.factorial(k)
@@ -174,16 +367,9 @@ def poisson_1x2(home_exp: float, away_exp: float, max_goals: int = 7):
         p_draw /= total
         p_away /= total
 
-    return {
-        "home": p_home,
-        "draw": p_draw,
-        "away": p_away
-    }
+    return {"home": p_home, "draw": p_draw, "away": p_away}
 
 def team_strength_score(name: str) -> float:
-    """
-    Heurística leve para criar um fator de força sem depender de API adicional.
-    """
     n = (name or "").lower()
 
     strong = [
@@ -194,7 +380,7 @@ def team_strength_score(name: str) -> float:
     ]
     weak = [
         "chapecoense", "cuiaba", "cuiabá", "juventude", "mirassol", "vitoria", "vitória",
-        "coritiba", "getafe", "almeria", "lecce", "cadiz", "cádiz"
+        "coritiba", "getafe", "almeria", "lecce", "cadiz", "cádiz", "remo"
     ]
 
     score = 0.0
@@ -205,14 +391,10 @@ def team_strength_score(name: str) -> float:
         if t in n:
             score -= 0.12
 
-    # componente determinístico
     score += ((sum(ord(c) for c in n) % 17) - 8) / 300
     return score
 
 def estimate_goal_expectancy(home_team: str, away_team: str):
-    """
-    Base genérica + leve ajuste por força do nome do time.
-    """
     base_home = 1.38
     base_away = 1.08
 
@@ -237,16 +419,12 @@ def botano_score(ev_percent: float, fair_prob_percent: float, best_odd: float, c
     return round((ev_percent * 7.5) + (fair_prob_percent * 0.35) + (clv_percent * 0.25) - (best_odd * 1.15), 2)
 
 def kelly_fraction(prob: float, odd: float) -> float:
-    """
-    Kelly fracionado conservador.
-    """
     b = odd - 1
     if b <= 0:
         return 0.0
     q = 1 - prob
     raw = ((b * prob) - q) / b
     raw = max(0.0, raw)
-    # usar 25% do Kelly para reduzir risco
     frac = raw * 0.25
     return min(frac, 0.05)
 
@@ -256,12 +434,19 @@ def implied_prob_from_odd(odd: float) -> float:
     return 1 / odd
 
 def clv_percent(odd_entrada: float, odd_fechamento_atual: float) -> float:
-    """
-    Aproximação de CLV usando odd atual do mercado como referência.
-    """
     if odd_entrada <= 1 or odd_fechamento_atual <= 1:
         return 0.0
     return round(((odd_entrada / odd_fechamento_atual) - 1) * 100, 2)
+
+# =====================================
+# DB
+# =====================================
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
+)
+ODDS_API_KEY = st.secrets["ODDS_API_KEY"]
+BANKROLL_INICIAL = float(st.secrets.get("BANKROLL_INICIAL", 1500))
 
 # =====================================
 # HEADER
@@ -291,27 +476,27 @@ LIGAS = {
 # =====================================
 # FILTERS
 # =====================================
-colf1, colf2, colf3, colf4 = st.columns(4)
+st.markdown('<div class="filter-box">', unsafe_allow_html=True)
 
-with colf1:
+f1, f2, f3, f4 = st.columns(4)
+with f1:
     modo_scanner = st.selectbox("Modo", ["Liga específica", "Scanner global"])
-
-with colf2:
+with f2:
     liga_nome = st.selectbox("Liga", list(LIGAS.keys()))
-
-with colf3:
+with f3:
     filtro_hoje = st.checkbox("Mostrar apenas jogos de hoje", value=True)
-
-with colf4:
+with f4:
     filtro_finalizadas = st.checkbox("Mostrar apenas apostas finalizadas", value=False)
 
-colf5, colf6, colf7 = st.columns(3)
-with colf5:
+f5, f6, f7 = st.columns(3)
+with f5:
     ev_min = st.number_input("EV mínimo (%)", min_value=-20.0, max_value=100.0, value=1.0, step=0.5)
-with colf6:
+with f6:
     odd_min = st.number_input("Odd mínima", min_value=1.01, max_value=100.0, value=1.20, step=0.05)
-with colf7:
+with f7:
     odd_max = st.number_input("Odd máxima", min_value=1.01, max_value=200.0, value=10.00, step=0.10)
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 ligas_escolhidas = [LIGAS[liga_nome]] if modo_scanner == "Liga específica" else list(LIGAS.values())
 
@@ -422,7 +607,6 @@ def extrair_oportunidades(df_raw: pd.DataFrame) -> pd.DataFrame:
             out_key = outcome_key_for_selection(selection, home_team, away_team)
             fair_prob_poisson = probs_poisson.get(out_key, fair_prob_market) if out_key else fair_prob_market
 
-            # blend entre mercado e modelo
             fair_prob = (fair_prob_market * 0.55) + (fair_prob_poisson * 0.45)
             fair_prob_percent = round(fair_prob * 100, 2)
 
@@ -481,7 +665,7 @@ def extrair_oportunidades(df_raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # =====================================
-# LOAD DATA
+# DATA LOAD
 # =====================================
 df_odds, erros_api = buscar_odds_multiplas(tuple(ligas_escolhidas))
 df_op = extrair_oportunidades(df_odds)
@@ -491,7 +675,7 @@ if filtro_hoje and not df_op.empty:
     df_op = df_op[df_op["commence"].apply(lambda x: parse_dt_utc(x).date() == hoje if parse_dt_utc(x) else False)]
 
 # =====================================
-# HISTÓRICO / DB
+# HISTÓRICO
 # =====================================
 def carregar_historico():
     try:
@@ -514,7 +698,7 @@ def carregar_historico():
 df_hist = carregar_historico()
 
 # =====================================
-# BANKROLL / METRICS
+# METRICS
 # =====================================
 def calcular_metricas(df_hist_local: pd.DataFrame):
     bankroll = BANKROLL_INICIAL
@@ -550,24 +734,102 @@ def calcular_metricas(df_hist_local: pd.DataFrame):
 saldo_atual, lucro_total, roi, winrate, greens, reds, finalizadas = calcular_metricas(df_hist)
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Saldo Atual", brl(saldo_atual))
-m2.metric("Lucro Total", brl(lucro_total))
-m3.metric("ROI", pct(roi))
-m4.metric("Winrate", pct(winrate))
+with m1:
+    st.markdown(f'<div class="metric-box"><div class="metric-title">Saldo Atual</div><div class="metric-value">{brl(saldo_atual)}</div></div>', unsafe_allow_html=True)
+with m2:
+    st.markdown(f'<div class="metric-box"><div class="metric-title">Lucro Total</div><div class="metric-value">{brl(lucro_total)}</div></div>', unsafe_allow_html=True)
+with m3:
+    st.markdown(f'<div class="metric-box"><div class="metric-title">ROI</div><div class="metric-value">{pct(roi)}</div></div>', unsafe_allow_html=True)
+with m4:
+    st.markdown(f'<div class="metric-box"><div class="metric-title">Winrate</div><div class="metric-value">{pct(winrate)}</div></div>', unsafe_allow_html=True)
 
 # =====================================
-# TOP WORLD RANKING
+# RANKING - NOVO LAYOUT
 # =====================================
 st.markdown('<div class="section-title">🌍 Ranking das Melhores Apostas do Mundo</div>', unsafe_allow_html=True)
 
 if df_op.empty:
     st.info("Nenhuma oportunidade encontrada")
 else:
-    top_df = df_op.head(10)[[
-        "evento", "selecao", "casa", "odd", "ev", "score_botano", "stake_pct"
-    ]].copy()
-    top_df.columns = ["Evento", "Seleção", "Casa", "Odd", "EV %", "Score BOTANO", "Stake %"]
-    st.dataframe(top_df, use_container_width=True, hide_index=True)
+    top_rank = df_op.head(10).copy()
+
+    r1, r2 = st.columns(2)
+    left_items = top_rank.iloc[::2]
+    right_items = top_rank.iloc[1::2]
+
+    with r1:
+        for idx, row in left_items.iterrows():
+            st.markdown(f"""
+            <div class="rank-card">
+                <div class="rank-top">
+                    <div class="rank-event">{row['evento']}</div>
+                    <div class="rank-badge">#{idx+1}</div>
+                </div>
+                <div class="rank-grid">
+                    <div class="rank-item">
+                        <div class="rank-label">Seleção</div>
+                        <div class="rank-value">{row['selecao']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Casa</div>
+                        <div class="rank-value">{row['casa']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Odd</div>
+                        <div class="rank-value">{row['odd']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">EV</div>
+                        <div class="rank-value ev">{row['ev']}%</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Score BOTANO</div>
+                        <div class="rank-value good">{row['score_botano']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Stake</div>
+                        <div class="rank-value">{row['stake_pct']}%</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with r2:
+        for idx, row in right_items.iterrows():
+            st.markdown(f"""
+            <div class="rank-card">
+                <div class="rank-top">
+                    <div class="rank-event">{row['evento']}</div>
+                    <div class="rank-badge">#{idx+1}</div>
+                </div>
+                <div class="rank-grid">
+                    <div class="rank-item">
+                        <div class="rank-label">Seleção</div>
+                        <div class="rank-value">{row['selecao']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Casa</div>
+                        <div class="rank-value">{row['casa']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Odd</div>
+                        <div class="rank-value">{row['odd']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">EV</div>
+                        <div class="rank-value ev">{row['ev']}%</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Score BOTANO</div>
+                        <div class="rank-value good">{row['score_botano']}</div>
+                    </div>
+                    <div class="rank-item">
+                        <div class="rank-label">Stake</div>
+                        <div class="rank-value">{row['stake_pct']}%</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # =====================================
 # OPORTUNIDADES
@@ -598,8 +860,8 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        c1, c2 = st.columns([1, 1])
-        with c1:
+        b1, b2 = st.columns([1, 1])
+        with b1:
             if st.button(f"APOSTAR #{i+1}", key=f"apostar_{i}"):
                 payload = {
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -621,14 +883,14 @@ else:
                 supabase.table("apostas_simuladas").insert(payload).execute()
                 st.success("Aposta registrada. Recarregue para ver no histórico.")
 
-        with c2:
+        with b2:
             st.link_button(
                 f"Abrir casa: {row['casa']}",
                 f"https://www.google.com/search?q={row['casa']} apostas"
             )
 
 # =====================================
-# CLV UPDATE
+# MAPA CLV
 # =====================================
 def construir_mapa_closing_odds(df_oportunidades: pd.DataFrame):
     mapa = {}
@@ -696,8 +958,8 @@ else:
             key=f"res_{i}"
         )
 
-        col_save1, col_save2 = st.columns([1, 1])
-        with col_save1:
+        s1, s2 = st.columns([1, 1])
+        with s1:
             if st.button("Salvar resultado", key=f"save_{i}"):
                 payload_update = {
                     "resultado": novo_resultado,
@@ -710,14 +972,14 @@ else:
                 supabase.table("apostas_simuladas").update(payload_update).eq("id", row["id"]).execute()
                 st.success("Atualizado. Recarregue para refletir nas métricas.")
 
-        with col_save2:
+        with s2:
             st.write(f"Casa: {row.get('casa','-')}")
             st.write(f"Prob justa: {fair_prob_atual}%")
 
         st.divider()
 
 # =====================================
-# MÉTRICAS ADICIONAIS
+# RESUMO
 # =====================================
 st.markdown('<div class="section-title">🏆 Resumo Profissional</div>', unsafe_allow_html=True)
 
@@ -742,7 +1004,7 @@ k5.metric("EV médio das apostas", pct(avg_ev))
 k6.metric("Banca inicial", brl(BANKROLL_INICIAL))
 
 # =====================================
-# EVOLUÇÃO DA BANCA
+# EVOLUÇÃO BANCA
 # =====================================
 st.markdown('<div class="section-title">📈 Evolução da Banca</div>', unsafe_allow_html=True)
 
