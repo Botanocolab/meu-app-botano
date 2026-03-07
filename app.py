@@ -3,17 +3,17 @@ import requests
 import streamlit as st
 from datetime import datetime, timezone
 from supabase import create_client
+import altair as alt
 
 # =====================================
 # CONFIG
 # =====================================
-st.set_page_config(page_title="BOTANO+ | Value Betting Engine", layout="wide")
+st.set_page_config(page_title="BOTANO+ | Value Betting Engine PRO", layout="wide")
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 ODDS_API_KEY = st.secrets["ODDS_API_KEY"]
-
-BANKROLL = 1500
+BANKROLL_INICIAL = float(st.secrets.get("BANKROLL_INICIAL",1500))
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -28,7 +28,7 @@ background:linear-gradient(180deg,#0b0b0c 0%,#141414 100%);
 color:white;
 }
 
-label,p,span{
+label,span,p{
 color:white!important;
 }
 
@@ -46,27 +46,11 @@ padding:18px;
 margin-bottom:14px;
 }
 
-.botano-titulo{
+.botano-title{
 color:#ff5a2a;
 font-size:20px;
 font-weight:800;
-margin-bottom:8px;
-}
-
-.botano-metric{
-color:white;
-font-size:14px;
 margin-bottom:6px;
-}
-
-.botano-highlight{
-color:#7CFFB2;
-font-weight:800;
-}
-
-.botano-ev{
-color:#FFD166;
-font-weight:800;
 }
 
 .metric-box{
@@ -75,27 +59,19 @@ border:1px solid #2a2a2a;
 border-radius:16px;
 padding:16px;
 text-align:center;
-margin-bottom:20px;
-}
-
-.metric-title{
-color:white;
-font-size:12px;
 }
 
 .metric-value{
 font-size:28px;
 font-weight:800;
-color:white;
 }
 
 div.stButton > button{
 background:linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%)!important;
 color:white!important;
 border:none!important;
-border-radius:14px!important;
+border-radius:12px!important;
 font-weight:700!important;
-width:100%!important;
 }
 
 </style>
@@ -105,28 +81,31 @@ width:100%!important;
 # HEADER
 # =====================================
 st.markdown("""
-<h1>⚡ BOTANO+ <span style='font-size:18px;color:white;font-weight:400'>Value Betting Engine</span></h1>
-""", unsafe_allow_html=True)
+<h1>⚡ BOTANO+ <span style='font-size:18px;color:white;font-weight:400'>Value Betting Engine PRO</span></h1>
+""",unsafe_allow_html=True)
 
 # =====================================
-# FILTROS
+# LIGAS
 # =====================================
-colf1, colf2, colf3 = st.columns(3)
-
 ligas = {
-"Brasileirão Série A": "soccer_brazil_campeonato",
-"Premier League": "soccer_epl",
-"Champions League": "soccer_uefa_champs_league"
+"Brasileirão Série A":"soccer_brazil_campeonato",
+"Premier League":"soccer_epl",
+"Champions League":"soccer_uefa_champs_league",
+"La Liga":"soccer_spain_la_liga",
+"Serie A":"soccer_italy_serie_a",
+"Bundesliga":"soccer_germany_bundesliga"
 }
+
+colf1,colf2,colf3 = st.columns(3)
 
 with colf1:
     liga_nome = st.selectbox("Liga", list(ligas.keys()))
 
 with colf2:
-    filtro_hoje = st.checkbox("Mostrar apenas jogos de hoje", value=True)
+    filtro_hoje = st.checkbox("Mostrar apenas jogos de hoje",value=True)
 
 with colf3:
-    filtro_resultados = st.checkbox("Mostrar apenas apostas finalizadas")
+    filtro_finalizadas = st.checkbox("Mostrar apenas apostas finalizadas")
 
 liga_api = ligas[liga_nome]
 
@@ -139,14 +118,14 @@ def buscar_odds(liga):
     url=f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
 
     params={
-        "apiKey":ODDS_API_KEY,
-        "regions":"eu,uk",
-        "markets":"h2h",
-        "oddsFormat":"decimal",
-        "dateFormat":"iso"
+    "apiKey":ODDS_API_KEY,
+    "regions":"eu,uk",
+    "markets":"h2h",
+    "oddsFormat":"decimal",
+    "dateFormat":"iso"
     }
 
-    r=requests.get(url,params=params,timeout=15)
+    r=requests.get(url,params=params)
 
     if r.status_code!=200:
         return pd.DataFrame(),r.text
@@ -154,12 +133,12 @@ def buscar_odds(liga):
     data=r.json()
 
     if not data:
-        return pd.DataFrame(),"Sem jogos retornados"
+        return pd.DataFrame(),"Sem jogos"
 
     return pd.DataFrame(data),None
 
 # =====================================
-# SCANNER
+# SCANNER VALUE
 # =====================================
 def extrair_oportunidades(df):
 
@@ -176,13 +155,13 @@ def extrair_oportunidades(df):
 
         bookmakers=row["bookmakers"]
 
-        melhores_odds={}
-        odds_lista={}
+        best_odds={}
+        odds_media={}
         casa={}
 
         for book in bookmakers:
 
-            book_title=book.get("title","book")
+            nome_book=book.get("title","book")
 
             for market in book["markets"]:
 
@@ -191,19 +170,20 @@ def extrair_oportunidades(df):
 
                 for outcome in market["outcomes"]:
 
-                    nome=outcome["name"]
+                    name=outcome["name"]
                     price=outcome["price"]
 
-                    odds_lista.setdefault(nome,[]).append(price)
+                    odds_media.setdefault(name,[]).append(price)
 
-                    if nome not in melhores_odds or price>melhores_odds[nome]:
-                        melhores_odds[nome]=price
-                        casa[nome]=book_title
+                    if name not in best_odds or price>best_odds[name]:
 
-        for outcome in melhores_odds:
+                        best_odds[name]=price
+                        casa[name]=nome_book
 
-            best_odd=melhores_odds[outcome]
-            avg_odd=sum(odds_lista[outcome])/len(odds_lista[outcome])
+        for outcome in best_odds:
+
+            best_odd=best_odds[outcome]
+            avg_odd=sum(odds_media[outcome])/len(odds_media[outcome])
 
             fair_prob=1/avg_odd
             ev=(fair_prob*best_odd)-1
@@ -217,16 +197,18 @@ def extrair_oportunidades(df):
             if ev_percent>=7: stake_pct=2
             if ev_percent>=10: stake_pct=3
 
-            stake_valor=round(BANKROLL*(stake_pct/100),2)
+            stake_valor=round(BANKROLL_INICIAL*(stake_pct/100),2)
 
             oportunidades.append({
-                "evento":f"{home} x {away}",
-                "selecao":outcome,
-                "odd":round(best_odd,2),
-                "stake":stake_valor,
-                "ev":ev_percent,
-                "casa":casa[outcome],
-                "commence":commence
+            "evento":f"{home} x {away}",
+            "selecao":outcome,
+            "odd":round(best_odd,2),
+            "odd_media":round(avg_odd,2),
+            "ev":ev_percent,
+            "stake_pct":stake_pct,
+            "stake_valor":stake_valor,
+            "casa":casa[outcome],
+            "commence":commence
             })
 
     df_op=pd.DataFrame(oportunidades)
@@ -241,8 +223,8 @@ def extrair_oportunidades(df):
 # =====================================
 # DATA
 # =====================================
-df_odds,erro=buscar_odds(liga_api)
-df_op=extrair_oportunidades(df_odds)
+df_odds,erro = buscar_odds(liga_api)
+df_op = extrair_oportunidades(df_odds)
 
 # =====================================
 # FILTRO HOJE
@@ -251,24 +233,64 @@ if filtro_hoje and not df_op.empty:
 
     hoje=datetime.utcnow().date()
 
-    def jogo_hoje(data):
+    def hoje_filter(data):
         try:
             dt=datetime.fromisoformat(data.replace("Z","+00:00"))
             return dt.date()==hoje
         except:
             return False
 
-    df_op=df_op[df_op["commence"].apply(jogo_hoje)]
+    df_op=df_op[df_op["commence"].apply(hoje_filter)]
 
 # =====================================
-# BANKROLL
+# HISTORICO
 # =====================================
-st.markdown(f"""
-<div class="metric-box">
-<div class="metric-title">SALDO SIMULADO</div>
-<div class="metric-value">R$ {BANKROLL}</div>
-</div>
-""",unsafe_allow_html=True)
+hist=supabase.table("apostas_simuladas").select("*").execute()
+df_hist=pd.DataFrame(hist.data)
+
+if df_hist.empty:
+    df_hist=pd.DataFrame(columns=["stake","odd","resultado"])
+
+# =====================================
+# CALCULO BANCA
+# =====================================
+bankroll=BANKROLL_INICIAL
+lucro_total=0
+greens=0
+reds=0
+
+for _,r in df_hist.iterrows():
+
+    stake=r.get("stake",0)
+    odd=r.get("odd",1)
+    resultado=r.get("resultado","pendente")
+
+    if resultado=="green":
+
+        lucro=stake*(odd-1)
+        bankroll+=lucro
+        lucro_total+=lucro
+        greens+=1
+
+    if resultado=="red":
+
+        bankroll-=stake
+        lucro_total-=stake
+        reds+=1
+
+total_apostas=greens+reds
+roi=(lucro_total/(BANKROLL_INICIAL))*100 if total_apostas>0 else 0
+winrate=(greens/total_apostas)*100 if total_apostas>0 else 0
+
+# =====================================
+# METRICS
+# =====================================
+m1,m2,m3,m4=st.columns(4)
+
+m1.metric("Saldo Atual",f"R$ {round(bankroll,2)}")
+m2.metric("Lucro Total",f"R$ {round(lucro_total,2)}")
+m3.metric("ROI",f"{round(roi,2)}%")
+m4.metric("Winrate",f"{round(winrate,1)}%")
 
 # =====================================
 # OPORTUNIDADES
@@ -283,30 +305,30 @@ elif df_op.empty:
 
 else:
 
-    for i,row in df_op.head(20).iterrows():
+    for i,row in df_op.head(15).iterrows():
 
         st.markdown(f"""
         <div class="botano-card">
-        <div class="botano-titulo">{row['evento']}</div>
-        <div class="botano-metric"><b>Entrada:</b> {row['selecao']}</div>
-        <div class="botano-metric"><b>Casa:</b> {row['casa']}</div>
-        <div class="botano-metric"><b>Odd:</b> {row['odd']}</div>
-        <div class="botano-metric"><b>EV:</b> <span class="botano-ev">{row['ev']}%</span></div>
-        <div class="botano-metric"><b>Stake:</b> <span class="botano-highlight">R$ {row['stake']}</span></div>
+        <div class="botano-title">{row['evento']}</div>
+        Entrada: {row['selecao']} <br>
+        Casa: {row['casa']} <br>
+        Melhor odd: {row['odd']} | Média: {row['odd_media']} <br>
+        EV: {row['ev']}% <br>
+        Stake: {row['stake_pct']}% (R$ {row['stake_valor']})
         </div>
         """,unsafe_allow_html=True)
 
-        if st.button("APOSTAR",key=f"apostar{i}"):
+        if st.button("APOSTAR",key=f"a{i}"):
 
             payload={
-                "created_at":datetime.now(timezone.utc).isoformat(),
-                "evento":row["evento"],
-                "selecao":row["selecao"],
-                "odd":row["odd"],
-                "stake":row["stake"],
-                "ev":row["ev"],
-                "casa":row["casa"],
-                "resultado":"pendente"
+            "created_at":datetime.now(timezone.utc).isoformat(),
+            "evento":row["evento"],
+            "selecao":row["selecao"],
+            "odd":row["odd"],
+            "stake":row["stake_valor"],
+            "ev":row["ev"],
+            "casa":row["casa"],
+            "resultado":"pendente"
             }
 
             supabase.table("apostas_simuladas").insert(payload).execute()
@@ -316,32 +338,79 @@ else:
 # =====================================
 # HISTORICO
 # =====================================
-st.markdown("### Histórico de Apostas")
+st.subheader("Histórico de Apostas")
 
 hist=supabase.table("apostas_simuladas").select("*").execute()
-
 df_hist=pd.DataFrame(hist.data)
 
-if filtro_resultados and not df_hist.empty:
+if filtro_finalizadas and not df_hist.empty:
     df_hist=df_hist[df_hist["resultado"]!="pendente"]
 
 if df_hist.empty:
-    st.info("Sem apostas registradas")
+
+    st.info("Sem apostas")
 
 else:
 
     for i,row in df_hist.iterrows():
 
-        col1,col2,col3=st.columns([3,1,1])
+        c1,c2,c3,c4=st.columns([3,1,1,1])
 
-        col1.write(row.get("evento",""))
-        col2.write(f"Odd {row.get('odd',0)}")
-        col3.write(f"Stake {row.get('stake',0)}")
+        c1.write(row.get("evento",""))
+        c2.write(f"Odd {row.get('odd',1)}")
+        c3.write(f"Stake {row.get('stake',0)}")
+
+        resultado_atual=row.get("resultado","pendente")
+
+        resultado=st.selectbox(
+        "Resultado",
+        ["pendente","green","red"],
+        index=["pendente","green","red"].index(resultado_atual),
+        key=f"res{i}"
+        )
+
+        if st.button("Salvar",key=f"save{i}"):
+
+            supabase.table("apostas_simuladas").update(
+            {"resultado":resultado}
+            ).eq("id",row["id"]).execute()
+
+# =====================================
+# GRAFICO BANCA
+# =====================================
+st.subheader("Evolução da Banca")
+
+saldo=BANKROLL_INICIAL
+historia=[saldo]
+
+for _,r in df_hist.iterrows():
+
+    stake=r.get("stake",0)
+    odd=r.get("odd",1)
+    resultado=r.get("resultado","pendente")
+
+    if resultado=="green":
+        saldo+=stake*(odd-1)
+
+    if resultado=="red":
+        saldo-=stake
+
+    historia.append(saldo)
+
+df_chart=pd.DataFrame({"banca":historia})
+
+chart=alt.Chart(df_chart).mark_line().encode(
+x=alt.X('index:Q',title="Apostas"),
+y=alt.Y('banca:Q',title="Banca")
+)
+
+st.altair_chart(chart,use_container_width=True)
 
 # =====================================
 # DEBUG
 # =====================================
 with st.expander("Debug API"):
+
     st.write("Liga:",liga_api)
     st.write("Erro:",erro)
     st.write("Jogos retornados:",len(df_odds))
