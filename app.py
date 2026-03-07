@@ -1,132 +1,115 @@
 import streamlit as st
+import pandas as pd
+import requests
+from datetime import datetime
 
 st.set_page_config(page_title="BOTANO+ Smart Betting Engine", layout="wide")
 
-# =========================
-# CONTROLE DE NAVEGAÇÃO
-# =========================
+# =========================================================
+# ESTADO DE NAVEGAÇÃO
+# =========================================================
 if "pagina" not in st.session_state:
-    st.session_state.pagina = "painel"
+    st.session_state["pagina"] = "painel"
 
+def abrir_glossario():
+    st.session_state["pagina"] = "glossario"
 
-def ir_para_painel():
-    st.session_state.pagina = "painel"
+def voltar_painel():
+    st.session_state["pagina"] = "painel"
 
+# =========================================================
+# SEUS STATES JÁ EXISTENTES
+# =========================================================
+if "historico_apostas" not in st.session_state:
+    st.session_state["historico_apostas"] = []
 
-def ir_para_glossario():
-    st.session_state.pagina = "glossario"
+# coloque aqui outros session_state que seu app já usava
 
-
-# =========================
+# =========================================================
 # CSS GLOBAL
-# =========================
+# =========================================================
 st.markdown("""
 <style>
-.stApp{
-    background: linear-gradient(180deg, #070707 0%, #111111 100%);
-    color: white;
-}
+    .stApp {
+        background: linear-gradient(180deg, #070707 0%, #111111 100%);
+        color: #ffffff;
+    }
 
-h1,h2,h3{
-    color:#ff5a2a !important;
-    font-weight:800 !important;
-}
+    h1, h2, h3 {
+        color: #ff5a2a !important;
+        font-weight: 800 !important;
+    }
 
-.card{
-    background:#181818;
-    border:1px solid #2c2c2c;
-    border-left:4px solid #ff5a2a;
-    border-radius:18px;
-    padding:18px;
-    margin-bottom:14px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-}
+    .card {
+        background: #181818;
+        border: 1px solid #2c2c2c;
+        border-left: 4px solid #ff5a2a;
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
 
-.titulo{
-    color:#ff5a2a;
-    font-size:22px;
-    font-weight:800;
-    margin-bottom:8px;
-}
+    .titulo {
+        color: #ff5a2a;
+        font-size: 22px;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
 
-.texto{
-    color:white;
-    font-size:16px;
-    line-height:1.7;
-}
+    .texto {
+        color: white;
+        font-size: 16px;
+        line-height: 1.6;
+    }
 
-div.stButton > button {
-    background: linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%);
-    color: white !important;
-    border: none !important;
-    border-radius: 14px !important;
-    font-weight: 800 !important;
-    padding: 0.70rem 1.2rem !important;
-    font-size: 16px !important;
-}
+    div.stButton > button {
+        background: linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 14px !important;
+        font-weight: 800 !important;
+        padding: 0.7rem 1.2rem !important;
+    }
 
-div.stButton > button:hover {
-    background: linear-gradient(135deg,#ff6a3d 0%,#ff8c33 100%);
-    color: white !important;
-}
+    div.stButton > button:hover {
+        color: white !important;
+        border: none !important;
+    }
 
-div.stButton > button:focus:not(:active) {
-    color: white !important;
-    border: none !important;
-    box-shadow: none !important;
-}
+    label, .stSelectbox label, .stNumberInput label, .stSlider label {
+        color: white !important;
+        font-weight: 700 !important;
+    }
 
-.bloco-topo {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    margin-bottom: 10px;
-}
+    .stSelectbox div[data-baseweb="select"] > div,
+    .stNumberInput div[data-baseweb="input"] > div,
+    .stTextInput div[data-baseweb="input"] > div {
+        background-color: #1b1b1b !important;
+        color: white !important;
+    }
+
+    input, textarea {
+        color: white !important;
+    }
+
+    .glossario-topo {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-
-# =========================
-# PÁGINA PRINCIPAL
-# =========================
-def render_painel():
-    st.title("BOTANO+ Smart Betting Engine")
-    st.markdown("### Painel principal")
-
-    st.write("Aqui fica o seu painel principal do BOTANO+.")
-    st.write("Use este botão para abrir o glossário sem sair do app:")
-
-    st.button("📘 Abrir Glossário", on_click=ir_para_glossario)
-
-    st.markdown("---")
-
-    # AQUI você cola o restante do conteúdo real do seu painel principal:
-    # filtros
-    # scanner
-    # ranking
-    # simulador
-    # histórico
-    #
-    # Exemplo temporário:
-    st.markdown("""
-    <div class="card">
-        <div class="titulo">Painel principal do BOTANO+</div>
-        <div class="texto">
-            Este espaço deve conter seu scanner de odds, ranking, simulador,
-            histórico, métricas e gráficos.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# =========================
-# PÁGINA GLOSSÁRIO
-# =========================
+# =========================================================
+# FUNÇÃO DO GLOSSÁRIO
+# =========================================================
 def render_glossario():
     st.title("📘 Glossário do BOTANO+")
 
-    st.button("⬅ Voltar para o painel principal", on_click=ir_para_painel)
+    st.button("⬅ Voltar para o painel principal", on_click=voltar_painel)
 
     st.markdown("""
     <div class="card">
@@ -256,11 +239,31 @@ def render_glossario():
     </div>
     """, unsafe_allow_html=True)
 
-
-# =========================
+# =========================================================
 # ROTEAMENTO
-# =========================
-if st.session_state.pagina == "painel":
-    render_painel()
-elif st.session_state.pagina == "glossario":
+# =========================================================
+if st.session_state["pagina"] == "glossario":
     render_glossario()
+    st.stop()
+
+# =========================================================
+# DAQUI PARA BAIXO FICA O SEU PAINEL ORIGINAL COMPLETO
+# =========================================================
+
+st.title("BOTANO+ Smart Betting Engine")
+
+col_top_1, col_top_2 = st.columns([6, 1])
+with col_top_2:
+    st.button("📘 Glossário", on_click=abrir_glossario)
+
+# =========================================================
+# COLE AQUI TODO O SEU CÓDIGO ANTIGO DO PAINEL
+# scanner
+# filtros
+# ranking
+# simulador
+# histórico
+# métricas
+# gráfico da banca
+# etc.
+# =========================================================
