@@ -479,6 +479,221 @@ def fetch_bet_history(limit: int = 50) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+# ==================================================
+# INÍCIO DO BLOCO 2 - MOTOR DE CÁLCULOS (BACKEND)
+# ==================================================
+
+SUPPORTED_MARKETS = [
+    "h2h",
+    "totals",
+    "btts",
+    "totals_corners",
+    "totals_cards",
+]
+
+MARKET_LABELS = {
+    "h2h": "Vencedor (1x2)",
+    "totals": "Gols",
+    "btts": "BTTS",
+    "totals_corners": "Escanteios",
+    "totals_cards": "Cartões",
+}
+
+MARKET_PRIORITY_LINES = {
+    "totals": [1.5, 2.5, 3.5],
+    "totals_corners": [8.5, 9.5, 10.5, 11.5],
+    "totals_cards": [3.5, 4.5, 5.5, 6.5],
+}
+
+
+def remove_overround_probs(odds: List[float]) -> List[float]:
+    """Remove margem da casa."""
+    raw_probs = [1 / odd for odd in odds if odd > 1]
+    total = sum(raw_probs)
+
+    if total == 0:
+        return []
+
+    return [p / total for p in raw_probs]
+
+
+def calculate_ev(fair_prob: float, odd: float) -> float:
+    """Expected Value."""
+    return (fair_prob * odd) - 1
+
+
+def calculate_kelly(prob: float, odd: float, bankroll: float) -> Dict[str, float]:
+    """Kelly Criterion."""
+    b = odd - 1
+    edge = (odd * prob) - 1
+
+    if b <= 0:
+        return {"stake": 0, "kelly_percent": 0}
+
+    kelly_fraction = edge / b
+
+    if kelly_fraction <= 0:
+        return {"stake": 0, "kelly_percent": 0}
+
+    stake = bankroll * kelly_fraction
+
+    return {
+        "stake": round(stake, 2),
+        "kelly_percent": round(kelly_fraction * 100, 2)
+    }
+
+
+def calculate_botano_score(ev: float, liquidity: float, volatility: float) -> float:
+    """Score Botano (0-100)."""
+    score = (
+        (ev * 100 * 1.7)
+        + (liquidity * 30)
+        + ((1 - volatility) * 20)
+    )
+
+    score += 25
+
+    return max(0, min(score, 100))
+
+
+def calculate_dutching(bankroll: float, odds: List[float]) -> Dict:
+    """Calculadora de Dutching."""
+    inv_sum = sum(1 / o for o in odds)
+
+    stakes = [(bankroll * (1 / o)) / inv_sum for o in odds]
+
+    uniform_return = stakes[0] * odds[0]
+
+    profit = uniform_return - bankroll
+
+    return {
+        "stakes": stakes,
+        "retorno": uniform_return,
+        "lucro": profit
+    }
+
+
+def odds_drop_percentage(opening_odd: float, current_odd: float) -> float:
+    """Queda percentual da odd."""
+    if opening_odd <= 1:
+        return 0
+
+    return ((opening_odd - current_odd) / opening_odd) * 100
+
+
+def detect_smart_money(opening_odd: float, current_odd: float) -> bool:
+    """Detecta Smart Money."""
+    return odds_drop_percentage(opening_odd, current_odd) >= 5
+
+
+def process_data(events, bankroll):
+
+    rows = []
+
+    for event in events:
+
+        try:
+
+            home = event.get("home_team")
+            away = event.get("away_team")
+            game = f"{home} x {away}"
+
+            bookmakers = event.get("bookmakers", [])
+
+            for book in bookmakers:
+
+                for market in book.get("markets", []):
+
+                    market_key = market.get("key")
+
+                    if market_key not in SUPPORTED_MARKETS:
+                        continue
+
+                    outcomes = market.get("outcomes", [])
+
+                    odds = [o["price"] for o in outcomes if o["price"] > 1]
+
+                    if len(odds) < 2:
+                        continue
+
+                    fair_probs = remove_overround_probs(odds)
+
+                    for i, outcome in enumerate(outcomes):
+
+                        odd = outcome.get("price")
+
+                        if odd <= 1:
+                            continue
+
+                        prob = fair_probs[i]
+
+                        ev = calculate_ev(prob, odd)
+
+                        liquidity = min(len(bookmakers) / 10, 1)
+
+                        volatility = min(odd / 10, 1)
+
+                        score = calculate_botano_score(ev, liquidity, volatility)
+
+                        kelly = calculate_kelly(prob, odd, bankroll)
+
+                        rows.append({
+
+                            "evento": game,
+                            "mercado": market_key,
+                            "selecao": outcome.get("name"),
+                            "odd": odd,
+                            "ev_percent": ev * 100,
+                            "score_botano": score,
+                            "kelly_stake": kelly["stake"],
+                            "kelly_percent": kelly["kelly_percent"]
+
+                        })
+
+        except Exception:
+            continue
+
+    return pd.DataFrame(rows)
+
+
+def build_tripla_do_dia(df):
+
+    if df.empty:
+        return df
+
+    df = df.sort_values("score_botano", ascending=False)
+
+    selected = []
+
+    used_games = set()
+    used_markets = set()
+
+    for _, row in df.iterrows():
+
+        game = row["evento"]
+        market = row["mercado"]
+
+        if game in used_games:
+            continue
+
+        if market in used_markets:
+            continue
+
+        selected.append(row)
+
+        used_games.add(game)
+        used_markets.add(market)
+
+        if len(selected) == 3:
+            break
+
+    return pd.DataFrame(selected)
+
+
+# ==================================================
+# FIM DO BLOCO 2
+# ==================================================
+
 # ============================================================
 # ODDS PROCESSING
 # ============================================================
@@ -1324,3 +1539,4 @@ st.markdown(
     '<div class="footer-note">Botano+ V5.1 · Scanner de valor com consenso de mercado, gestão por Kelly, leitura de liquidez, volatilidade e proteção contra falhas externas.</div>',
     unsafe_allow_html=True,
 )
+
