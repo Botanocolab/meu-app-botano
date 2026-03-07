@@ -39,13 +39,15 @@ div.stButton > button{
     font-weight:800 !important;
     width:100% !important;
 }
+a {
+    text-decoration: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 st.title("📘 Glossário do BOTANO+")
 
-if st.button("⬅ Voltar para o painel principal"):
-    st.switch_page("app.py")
+st.page_link("app.py", label="⬅ Voltar para o painel principal", icon="⬅")
 
 st.markdown("""
 <div class="card">
