@@ -13,7 +13,6 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 ODDS_API_KEY = st.secrets["ODDS_API_KEY"]
 
-# saldo inicial para simulação
 BANKROLL = 1500
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -23,7 +22,6 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================================
 st.markdown("""
 <style>
-
 .stApp{
 background:linear-gradient(180deg,#0b0b0c 0%,#141414 100%);
 color:white;
@@ -41,7 +39,6 @@ border-left:4px solid #ff5a2a;
 border-radius:16px;
 padding:18px;
 margin-bottom:14px;
-box-shadow:0 8px 20px rgba(0,0,0,0.35);
 }
 
 .botano-titulo{
@@ -108,7 +105,6 @@ border-radius:16px;
 padding:20px;
 margin-top:10px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -122,24 +118,24 @@ st.markdown("""
 # =====================================
 # FILTROS
 # =====================================
-colf1,colf2,colf3=st.columns(3)
+colf1, colf2, colf3 = st.columns(3)
 
-ligas={
-"Brasileirão Série A":"soccer_brazil_campeonato",
-"Premier League":"soccer_epl",
-"Champions League":"soccer_uefa_champs_league"
+ligas = {
+"Brasileirão Série A": "soccer_brazil_campeonato",
+"Premier League": "soccer_epl",
+"Champions League": "soccer_uefa_champs_league"
 }
 
 with colf1:
-    liga_nome=st.selectbox("Liga",list(ligas.keys()))
+    liga_nome = st.selectbox("Liga", list(ligas.keys()))
 
 with colf2:
-    filtro_hoje=st.checkbox("Mostrar apenas jogos de hoje",value=True)
+    filtro_hoje = st.checkbox("Mostrar apenas jogos de hoje", value=True)
 
 with colf3:
-    filtro_resultados=st.checkbox("Mostrar apenas apostas finalizadas")
+    filtro_resultados = st.checkbox("Mostrar apenas apostas finalizadas")
 
-liga_api=ligas[liga_nome]
+liga_api = ligas[liga_nome]
 
 # =====================================
 # API
@@ -157,21 +153,17 @@ def buscar_odds(liga):
         "dateFormat":"iso"
     }
 
-    try:
-        r=requests.get(url,params=params,timeout=15)
+    r=requests.get(url,params=params,timeout=15)
 
-        if r.status_code!=200:
-            return pd.DataFrame(),r.text
+    if r.status_code!=200:
+        return pd.DataFrame(),r.text
 
-        data=r.json()
+    data=r.json()
 
-        if not data:
-            return pd.DataFrame(),"Sem jogos retornados pela API"
+    if not data:
+        return pd.DataFrame(),"Sem jogos retornados"
 
-        return pd.DataFrame(data),None
-
-    except Exception as e:
-        return pd.DataFrame(),str(e)
+    return pd.DataFrame(data),None
 
 # =====================================
 # SCANNER
@@ -313,12 +305,12 @@ else:
         </div>
         """,unsafe_allow_html=True)
 
-        if st.button(f"APOSTAR",key=f"apostar{i}"):
+        if st.button("APOSTAR",key=f"apostar{i}"):
 
             st.session_state["confirmar"]=row.to_dict()
 
 # =====================================
-# CONFIRMACAO
+# CONFIRMAR
 # =====================================
 if "confirmar" in st.session_state:
 
@@ -339,70 +331,61 @@ if "confirmar" in st.session_state:
     </div>
     """,unsafe_allow_html=True)
 
-    colA,colB=st.columns(2)
+    if st.button("CONFIRMAR APOSTA"):
 
-    with colA:
-        if st.button("CONFIRMAR APOSTA"):
+        payload={
+            "created_at":datetime.now(timezone.utc).isoformat(),
+            "evento":aposta["evento"],
+            "selecao":aposta["selecao"],
+            "odd":aposta["odd"],
+            "stake":aposta["stake_valor"],
+            "ev":aposta["ev"],
+            "casa":aposta["casa"],
+            "resultado":"pendente"
+        }
 
-            payload={
-                "created_at":datetime.now(timezone.utc).isoformat(),
-                "evento":aposta["evento"],
-                "selecao":aposta["selecao"],
-                "odd":aposta["odd"],
-                "stake":aposta["stake_valor"],
-                "ev":aposta["ev"],
-                "casa":aposta["casa"],
-                "resultado":"pendente"
-            }
+        supabase.table("apostas_simuladas").insert(payload).execute()
 
-            supabase.table("apostas_simuladas").insert(payload).execute()
+        st.success("Aposta registrada")
 
-            st.success("Aposta registrada")
-
-            del st.session_state["confirmar"]
-
-    with colB:
-        st.link_button("Abrir casa de aposta","https://www.google.com/search?q="+aposta["casa"])
+        del st.session_state["confirmar"]
 
 # =====================================
 # HISTORICO
 # =====================================
 st.markdown("### Histórico de Apostas")
 
-try:
+hist=supabase.table("apostas_simuladas").select("*").execute()
 
-    hist=supabase.table("apostas_simuladas").select("*").execute()
+df_hist=pd.DataFrame(hist.data)
 
-    df_hist=pd.DataFrame(hist.data)
+if filtro_resultados:
+    df_hist=df_hist[df_hist["resultado"]!="pendente"]
 
-    if filtro_resultados:
-        df_hist=df_hist[df_hist["resultado"]!="pendente"]
+if df_hist.empty:
+    st.info("Sem apostas registradas")
 
-    if df_hist.empty:
-        st.info("Sem apostas registradas")
+else:
 
-    else:
+    for i,row in df_hist.iterrows():
 
-        for i,row in df_hist.iterrows():
+        col1,col2,col3,col4=st.columns([3,1,1,1])
 
-            col1,col2,col3,col4=st.columns([3,1,1,1])
+        col1.write(row["evento"])
+        col2.write(f"Odd {row['odd']}")
+        col3.write(f"Stake {row['stake']}")
 
-            col1.write(row["evento"])
-            col2.write(f"Odd {row['odd']}")
-            col3.write(f"Stake {row['stake']}")
+        resultado=st.selectbox(
+            "Resultado",
+            ["pendente","green","red"],
+            key=f"res{i}"
+        )
 
-            resultado=st.selectbox(
-                "Resultado",
-                ["pendente","green","red"],
-                index=["pendente","green","red"].index(row["resultado"]) if row["resultado"] in ["pendente","green","red"] else 0,
-                key=f"res{i}"
-            )
+        if st.button("Salvar",key=f"save{i}"):
 
-            if resultado!=row["resultado"]:
-
-                supabase.table("apostas_simuladas").update(
-                    {"resultado":resultado}
-                ).eq("id",row["id"]).execute()
+            supabase.table("apostas_simuladas").update(
+                {"resultado":resultado}
+            ).eq("id",row["id"]).execute()
 
 # =====================================
 # DEBUG
