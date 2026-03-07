@@ -8,7 +8,10 @@ import altair as alt
 # =====================================
 # CONFIG
 # =====================================
-st.set_page_config(page_title="BOTANO+ | Value Betting Engine PRO", layout="wide")
+st.set_page_config(
+    page_title="BOTANO+ | Value Betting Engine PRO",
+    layout="wide"
+)
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
@@ -18,10 +21,13 @@ BANKROLL_INICIAL = float(st.secrets.get("BANKROLL_INICIAL", 1500))
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================================
-# NAVEGAÇÃO
+# SESSION STATE
 # =====================================
 if "pagina" not in st.session_state:
     st.session_state["pagina"] = "painel"
+
+if "aposta_carregada" not in st.session_state:
+    st.session_state["aposta_carregada"] = None
 
 def abrir_glossario():
     st.session_state["pagina"] = "glossario"
@@ -43,43 +49,17 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-label, span, p, div {
-    color: white;
-}
-
 h1, h2, h3 {
     color: #ff5a2a !important;
     font-weight: 800 !important;
 }
 
-.botano-card{
-    background: #1c1c1c;
-    border: 1px solid #2c2c2c;
-    border-left: 4px solid #ff5a2a;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 14px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+p, span, label, div {
+    color: white;
 }
 
-.botano-title{
-    color: #ff5a2a;
-    font-size: 20px;
-    font-weight: 800;
-    margin-bottom: 6px;
-}
-
-.metric-box{
-    background: #161616;
-    border: 1px solid #2a2a2a;
-    border-radius: 16px;
-    padding: 16px;
-    text-align: center;
-}
-
-.metric-value{
-    font-size: 28px;
-    font-weight: 800;
+section[data-testid="stSidebar"] {
+    background: #101010;
 }
 
 div.stButton > button{
@@ -88,7 +68,7 @@ div.stButton > button{
     border: none !important;
     border-radius: 14px !important;
     font-weight: 800 !important;
-    min-height: 52px !important;
+    min-height: 46px !important;
     width: 100% !important;
     white-space: normal !important;
 }
@@ -106,68 +86,150 @@ div.stButton > button:active{
     box-shadow: none !important;
 }
 
-[data-testid="stMetric"] {
-    background: #161616;
-    border: 1px solid #2a2a2a;
-    border-radius: 16px;
-    padding: 10px;
+[data-testid="stMetric"]{
+    background:#161616;
+    border:1px solid #2a2a2a;
+    border-radius:16px;
+    padding:12px;
 }
 
-[data-testid="stMetricLabel"] {
-    color: #cfcfcf !important;
-    font-weight: 700 !important;
+[data-testid="stMetricLabel"]{
+    color:#cfcfcf !important;
+    font-weight:700 !important;
 }
 
-[data-testid="stMetricValue"] {
-    color: white !important;
-    font-weight: 800 !important;
+[data-testid="stMetricValue"]{
+    color:white !important;
+    font-weight:800 !important;
 }
 
 div[data-baseweb="select"] > div,
-div[data-baseweb="input"] > div {
-    background-color: #1a1a1a !important;
-    color: white !important;
-    border: 1px solid #333 !important;
+div[data-baseweb="input"] > div,
+div[data-testid="stNumberInput"] input {
+    background:#1b1b1b !important;
+    color:white !important;
+    border:1px solid #333 !important;
 }
 
 div[data-baseweb="select"] * {
-    color: white !important;
+    color:white !important;
 }
 
-input {
-    color: white !important;
+input, textarea {
+    color:white !important;
 }
 
-.stSelectbox label,
-.stCheckbox label {
-    color: white !important;
-    font-weight: 700 !important;
+.botano-card{
+    background:#1c1c1c;
+    border:1px solid #2c2c2c;
+    border-left:4px solid #ff5a2a;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+}
+
+.botano-title{
+    color:#ff5a2a;
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.botano-sub{
+    color:#d7d7d7;
+    font-size:14px;
+    margin-bottom:10px;
+}
+
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+    margin-right:8px;
+    margin-bottom:8px;
+}
+
+.badge-ev{
+    background:#2b1a12;
+    border:1px solid #ff7a1a;
+    color:#ffb38a;
+}
+
+.badge-score{
+    background:#171f15;
+    border:1px solid #4caf50;
+    color:#b9f2c1;
+}
+
+.badge-stake{
+    background:#151d24;
+    border:1px solid #4ea3ff;
+    color:#a8d3ff;
 }
 
 .gloss-card{
-    background: #181818;
-    border: 1px solid #2c2c2c;
-    border-left: 4px solid #ff5a2a;
-    border-radius: 18px;
-    padding: 18px;
-    margin-bottom: 14px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+    background:#181818;
+    border:1px solid #2c2c2c;
+    border-left:4px solid #ff5a2a;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
 }
 
 .gloss-title{
-    color: #ff5a2a;
-    font-size: 22px;
-    font-weight: 800;
-    margin-bottom: 8px;
+    color:#ff5a2a;
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:8px;
 }
 
 .gloss-text{
-    color: white;
-    font-size: 16px;
-    line-height: 1.7;
+    color:white;
+    font-size:16px;
+    line-height:1.7;
+}
+
+.sim-card{
+    background:#161616;
+    border:1px solid #2b2b2b;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+hr{
+    border-color:#262626 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
+# =====================================
+# HELPERS
+# =====================================
+def score_botano(ev_percent, fair_prob_percent, odd):
+    return round((ev_percent * 8) + (fair_prob_percent * 0.3) - (odd * 1.2), 2)
+
+def nivel_confianca(score):
+    if score >= 95:
+        return "Muito Alta"
+    if score >= 75:
+        return "Alta"
+    if score >= 55:
+        return "Boa"
+    if score >= 40:
+        return "Moderada"
+    return "Baixa"
+
+def hoje_filter(data):
+    try:
+        dt = datetime.fromisoformat(data.replace("Z", "+00:00"))
+        return dt.date() == datetime.utcnow().date()
+    except Exception:
+        return False
 
 # =====================================
 # GLOSSÁRIO
@@ -176,83 +238,27 @@ def render_glossario():
     top1, top2 = st.columns([6, 2])
 
     with top1:
-        st.markdown("""
-        <h1>📘 Glossário do BOTANO+</h1>
-        """, unsafe_allow_html=True)
+        st.markdown("<h1>📘 Glossário do BOTANO+</h1>", unsafe_allow_html=True)
 
     with top2:
         st.write("")
         st.button("⬅ Voltar ao painel principal", on_click=voltar_painel)
 
     cards = [
-        (
-            "Odd",
-            "É o número que mostra quanto a aposta paga.<br><br>"
-            "Exemplo:<br>"
-            "Odd 2.00 = se acertar, recebe o dobro.<br>"
-            "Odd 3.00 = paga mais.<br><br>"
-            "Forma simples de explicar: <b>é o preço da aposta</b>."
-        ),
-        (
-            "EV",
-            "EV é a vantagem matemática da aposta.<br><br>"
-            "Quando o EV está positivo, significa que a aposta parece boa pelas contas.<br><br>"
-            "Forma simples de explicar: <b>é se a aposta vale a pena ou não</b>."
-        ),
-        (
-            "Stake",
-            "Stake é quanto do seu dinheiro o sistema recomenda apostar.<br><br>"
-            "Exemplo:<br>"
-            "Se sua banca é R$ 1.500 e a stake for 2%, a aposta sugerida é R$ 30.<br><br>"
-            "Forma simples de explicar: <b>é quanto colocar na aposta com segurança</b>."
-        ),
-        (
-            "Saldo Atual",
-            "É quanto dinheiro você tem agora na simulação.<br><br>"
-            "Forma simples de explicar: <b>é o dinheiro que está no cofrinho neste momento</b>."
-        ),
-        (
-            "Lucro Total",
-            "Mostra quanto você ganhou ou perdeu no total.<br><br>"
-            "Forma simples de explicar: <b>é a conta geral do que entrou e saiu</b>."
-        ),
-        (
-            "ROI",
-            "ROI mostra se o dinheiro apostado está dando retorno.<br><br>"
-            "Forma simples de explicar: <b>é se o dinheiro investido está rendendo</b>."
-        ),
-        (
-            "Winrate",
-            "É a porcentagem de apostas ganhas.<br><br>"
-            "Forma simples de explicar: <b>é a taxa de acerto</b>."
-        ),
-        (
-            "Green",
-            "Green quer dizer aposta ganha.<br><br>"
-            "Forma simples de explicar: <b>foi acerto</b>."
-        ),
-        (
-            "Red",
-            "Red quer dizer aposta perdida.<br><br>"
-            "Forma simples de explicar: <b>foi erro</b>."
-        ),
-        (
-            "CLV",
-            "CLV compara a odd que você pegou com a odd que o mercado ficou depois.<br><br>"
-            "Se você pegou uma odd melhor antes dela cair, isso é bom.<br><br>"
-            "Forma simples de explicar: <b>é ver se você pegou um preço bom antes da mudança</b>."
-        ),
-        (
-            "Score BOTANO",
-            "É a nota geral que o sistema dá para a aposta.<br><br>"
-            "Quanto maior o score, melhor a oportunidade parece.<br><br>"
-            "Forma simples de explicar: <b>é a nota da aposta</b>."
-        ),
-        (
-            "Evolução da Banca",
-            "É o gráfico que mostra se seu dinheiro está subindo, caindo ou parado.<br><br>"
-            "Forma simples de explicar: <b>é o desenho do seu dinheiro ao longo do tempo</b>."
-        ),
+        ("Odd", "É o número que mostra quanto a aposta paga.<br><br>Exemplo:<br>Odd 2.00 = se acertar, recebe o dobro.<br>Odd 3.00 = paga mais.<br><br>Forma simples de explicar: <b>é o preço da aposta</b>."),
+        ("EV", "EV é a vantagem matemática da aposta.<br><br>Quando o EV está positivo, significa que a aposta parece boa pelas contas.<br><br>Forma simples de explicar: <b>é se a aposta vale a pena ou não</b>."),
+        ("Stake", "Stake é quanto do seu dinheiro o sistema recomenda apostar.<br><br>Exemplo:<br>Se sua banca é R$ 1.500 e a stake for 2%, a aposta sugerida é R$ 30.<br><br>Forma simples de explicar: <b>é quanto colocar na aposta com segurança</b>."),
+        ("Odd Média", "É a média das odds oferecidas por várias casas.<br><br>Forma simples de explicar: <b>é o preço médio da aposta no mercado</b>."),
+        ("Fair Probability", "É a chance estimada de um resultado acontecer, com base nas odds médias.<br><br>Forma simples de explicar: <b>é a chance real que o sistema enxerga</b>."),
+        ("Saldo Atual", "É quanto dinheiro você tem agora na simulação.<br><br>Forma simples de explicar: <b>é o dinheiro que está no cofrinho neste momento</b>."),
+        ("Lucro Total", "Mostra quanto você ganhou ou perdeu no total.<br><br>Forma simples de explicar: <b>é a conta geral do que entrou e saiu</b>."),
+        ("ROI", "ROI mostra se o dinheiro apostado está dando retorno.<br><br>Forma simples de explicar: <b>é se o dinheiro investido está rendendo</b>."),
+        ("Winrate", "É a porcentagem de apostas ganhas.<br><br>Forma simples de explicar: <b>é a taxa de acerto</b>."),
+        ("Green", "Green quer dizer aposta ganha.<br><br>Forma simples de explicar: <b>foi acerto</b>."),
+        ("Red", "Red quer dizer aposta perdida.<br><br>Forma simples de explicar: <b>foi erro</b>."),
+        ("CLV", "CLV compara a odd que você pegou com a odd que o mercado ficou depois.<br><br>Se você pegou uma odd melhor antes dela cair, isso é bom.<br><br>Forma simples de explicar: <b>é ver se você pegou um preço bom antes da mudança</b>."),
+        ("Score BOTANO", "É a nota geral que o sistema dá para a aposta.<br><br>Quanto maior o score, melhor a oportunidade parece.<br><br>Forma simples de explicar: <b>é a nota da aposta</b>."),
+        ("Evolução da Banca", "É o gráfico que mostra se seu dinheiro está subindo, caindo ou parado.<br><br>Forma simples de explicar: <b>é o desenho do seu dinheiro ao longo do tempo</b>."),
     ]
 
     for titulo, texto in cards:
@@ -264,7 +270,7 @@ def render_glossario():
         """, unsafe_allow_html=True)
 
 # =====================================
-# SE ESTIVER NO GLOSSÁRIO, PARA AQUI
+# GLOSSÁRIO MODE
 # =====================================
 if st.session_state["pagina"] == "glossario":
     render_glossario()
@@ -273,19 +279,19 @@ if st.session_state["pagina"] == "glossario":
 # =====================================
 # HEADER
 # =====================================
-col_header_1, col_header_2 = st.columns([7, 2])
+c_head_1, c_head_2 = st.columns([7, 2])
 
-with col_header_1:
+with c_head_1:
     st.markdown("""
     <h1>⚡ BOTANO+ <span style='font-size:18px;color:white;font-weight:400'>Value Betting Engine PRO</span></h1>
     """, unsafe_allow_html=True)
 
-with col_header_2:
+with c_head_2:
     st.write("")
     st.button("📘 Abrir Glossário", on_click=abrir_glossario)
 
 # =====================================
-# LIGAS
+# LIGAS E FILTROS
 # =====================================
 ligas = {
     "Brasileirão Série A": "soccer_brazil_campeonato",
@@ -315,7 +321,6 @@ liga_api = ligas[liga_nome]
 @st.cache_data(ttl=60)
 def buscar_odds(liga):
     url = f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
-
     params = {
         "apiKey": ODDS_API_KEY,
         "regions": "eu,uk",
@@ -324,7 +329,7 @@ def buscar_odds(liga):
         "dateFormat": "iso"
     }
 
-    r = requests.get(url, params=params)
+    r = requests.get(url, params=params, timeout=30)
 
     if r.status_code != 200:
         return pd.DataFrame(), r.text
@@ -337,7 +342,7 @@ def buscar_odds(liga):
     return pd.DataFrame(data), None
 
 # =====================================
-# SCANNER VALUE
+# EXTRATOR
 # =====================================
 def extrair_oportunidades(df):
     oportunidades = []
@@ -358,13 +363,16 @@ def extrair_oportunidades(df):
         for book in bookmakers:
             nome_book = book.get("title", "book")
 
-            for market in book["markets"]:
-                if market["key"] != "h2h":
+            for market in book.get("markets", []):
+                if market.get("key") != "h2h":
                     continue
 
-                for outcome in market["outcomes"]:
-                    name = outcome["name"]
-                    price = outcome["price"]
+                for outcome in market.get("outcomes", []):
+                    name = outcome.get("name")
+                    price = outcome.get("price")
+
+                    if name is None or price is None:
+                        continue
 
                     odds_media.setdefault(name, []).append(price)
 
@@ -373,10 +381,15 @@ def extrair_oportunidades(df):
                         casa[name] = nome_book
 
         for outcome in best_odds:
-            best_odd = best_odds[outcome]
+            if not odds_media.get(outcome):
+                continue
+
+            best_odd = float(best_odds[outcome])
             avg_odd = sum(odds_media[outcome]) / len(odds_media[outcome])
 
             fair_prob = 1 / avg_odd
+            fair_prob_percent = round(fair_prob * 100, 2)
+
             ev = (fair_prob * best_odd) - 1
             ev_percent = round(ev * 100, 2)
 
@@ -385,20 +398,25 @@ def extrair_oportunidades(df):
 
             stake_pct = 0.5
             if ev_percent >= 4:
-                stake_pct = 1
+                stake_pct = 1.0
             if ev_percent >= 7:
-                stake_pct = 2
+                stake_pct = 2.0
             if ev_percent >= 10:
-                stake_pct = 3
+                stake_pct = 3.0
 
             stake_valor = round(BANKROLL_INICIAL * (stake_pct / 100), 2)
+            score = score_botano(ev_percent, fair_prob_percent, best_odd)
+            confianca = nivel_confianca(score)
 
             oportunidades.append({
                 "evento": f"{home} x {away}",
                 "selecao": outcome,
                 "odd": round(best_odd, 2),
                 "odd_media": round(avg_odd, 2),
+                "fair_prob": fair_prob_percent,
                 "ev": ev_percent,
+                "score_botano": score,
+                "confianca": confianca,
                 "stake_pct": stake_pct,
                 "stake_valor": stake_valor,
                 "casa": casa[outcome],
@@ -410,41 +428,28 @@ def extrair_oportunidades(df):
     if df_op.empty:
         return df_op
 
-    df_op = df_op.sort_values("ev", ascending=False)
-    return df_op
+    return df_op.sort_values(["score_botano", "ev"], ascending=False)
 
 # =====================================
-# DATA
+# DADOS
 # =====================================
 df_odds, erro = buscar_odds(liga_api)
 df_op = extrair_oportunidades(df_odds)
 
-# =====================================
-# FILTRO HOJE
-# =====================================
 if filtro_hoje and not df_op.empty:
-    hoje = datetime.utcnow().date()
-
-    def hoje_filter(data):
-        try:
-            dt = datetime.fromisoformat(data.replace("Z", "+00:00"))
-            return dt.date() == hoje
-        except:
-            return False
-
     df_op = df_op[df_op["commence"].apply(hoje_filter)]
 
 # =====================================
-# HISTORICO
+# HISTÓRICO
 # =====================================
 hist = supabase.table("apostas_simuladas").select("*").execute()
 df_hist = pd.DataFrame(hist.data)
 
 if df_hist.empty:
-    df_hist = pd.DataFrame(columns=["stake", "odd", "resultado"])
+    df_hist = pd.DataFrame(columns=["id", "stake", "odd", "resultado"])
 
 # =====================================
-# CALCULO BANCA
+# CÁLCULO DE BANCA
 # =====================================
 bankroll = BANKROLL_INICIAL
 lucro_total = 0
@@ -452,8 +457,8 @@ greens = 0
 reds = 0
 
 for _, r in df_hist.iterrows():
-    stake = r.get("stake", 0)
-    odd = r.get("odd", 1)
+    stake = float(r.get("stake", 0) or 0)
+    odd = float(r.get("odd", 1) or 1)
     resultado = r.get("resultado", "pendente")
 
     if resultado == "green":
@@ -472,19 +477,49 @@ roi = (lucro_total / BANKROLL_INICIAL) * 100 if total_apostas > 0 else 0
 winrate = (greens / total_apostas) * 100 if total_apostas > 0 else 0
 
 # =====================================
-# METRICS
+# MÉTRICAS
 # =====================================
 m1, m2, m3, m4 = st.columns(4)
-
 m1.metric("Saldo Atual", f"R$ {round(bankroll, 2)}")
 m2.metric("Lucro Total", f"R$ {round(lucro_total, 2)}")
 m3.metric("ROI", f"{round(roi, 2)}%")
 m4.metric("Winrate", f"{round(winrate, 1)}%")
 
 # =====================================
+# SIMULADOR RÁPIDO
+# =====================================
+st.markdown("### 🎯 Simulador Rápido")
+
+sim1, sim2, sim3 = st.columns([3, 1, 1])
+
+aposta_carregada = st.session_state.get("aposta_carregada")
+
+evento_default = aposta_carregada["evento"] if aposta_carregada else ""
+odd_default = float(aposta_carregada["odd"]) if aposta_carregada else 2.00
+stake_default = float(aposta_carregada["stake_valor"]) if aposta_carregada else 20.00
+
+with sim1:
+    evento_sim = st.text_input("Evento carregado", value=evento_default)
+
+with sim2:
+    odd_sim = st.number_input("Odd", min_value=1.01, value=odd_default, step=0.01)
+
+with sim3:
+    stake_sim = st.number_input("Stake (R$)", min_value=1.0, value=stake_default, step=1.0)
+
+lucro_potencial = round(stake_sim * (odd_sim - 1), 2)
+retorno_total = round(stake_sim * odd_sim, 2)
+
+s1, s2 = st.columns(2)
+s1.metric("Lucro Potencial", f"R$ {lucro_potencial}")
+s2.metric("Retorno Total", f"R$ {retorno_total}")
+
+st.markdown("---")
+
+# =====================================
 # OPORTUNIDADES
 # =====================================
-st.subheader("🔥 Oportunidades de Valor")
+st.subheader("🔥 Ranking das Melhores Oportunidades")
 
 if erro:
     st.error(erro)
@@ -497,78 +532,109 @@ else:
         st.markdown(f"""
         <div class="botano-card">
             <div class="botano-title">{row['evento']}</div>
-            Entrada: {row['selecao']} <br>
-            Casa: {row['casa']} <br>
-            Melhor odd: {row['odd']} | Média: {row['odd_media']} <br>
-            EV: {row['ev']}% <br>
-            Stake: {row['stake_pct']}% (R$ {row['stake_valor']})
+            <div class="botano-sub">Seleção: <b>{row['selecao']}</b> | Casa: <b>{row['casa']}</b></div>
+
+            <span class="badge badge-ev">EV {row['ev']}%</span>
+            <span class="badge badge-score">Score {row['score_botano']}</span>
+            <span class="badge badge-stake">Stake {row['stake_pct']}% (R$ {row['stake_valor']})</span>
+
+            <br><br>
+
+            Melhor odd: <b>{row['odd']}</b> &nbsp;&nbsp;|&nbsp;&nbsp;
+            Odd média: <b>{row['odd_media']}</b> &nbsp;&nbsp;|&nbsp;&nbsp;
+            Prob. justa: <b>{row['fair_prob']}%</b> &nbsp;&nbsp;|&nbsp;&nbsp;
+            Confiança: <b>{row['confianca']}</b>
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("APOSTAR", key=f"a{i}"):
-            payload = {
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "evento": row["evento"],
-                "selecao": row["selecao"],
-                "odd": row["odd"],
-                "stake": row["stake_valor"],
-                "ev": row["ev"],
-                "casa": row["casa"],
-                "resultado": "pendente"
-            }
+        a1, a2 = st.columns(2)
 
-            supabase.table("apostas_simuladas").insert(payload).execute()
-            st.success("Aposta registrada")
+        with a1:
+            if st.button("🟧 Apostar", key=f"apostar_{i}"):
+                payload = {
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "evento": row["evento"],
+                    "selecao": row["selecao"],
+                    "odd": float(row["odd"]),
+                    "stake": float(row["stake_valor"]),
+                    "ev": float(row["ev"]),
+                    "score_botano": float(row["score_botano"]),
+                    "casa": row["casa"],
+                    "resultado": "pendente"
+                }
+                supabase.table("apostas_simuladas").insert(payload).execute()
+                st.success("Aposta registrada no histórico.")
+
+        with a2:
+            if st.button("📥 Carregar no simulador", key=f"simular_{i}"):
+                st.session_state["aposta_carregada"] = {
+                    "evento": row["evento"],
+                    "odd": float(row["odd"]),
+                    "stake_valor": float(row["stake_valor"])
+                }
+                st.success("Aposta carregada no simulador. Confira o bloco acima.")
+                st.rerun()
 
 # =====================================
 # HISTÓRICO
 # =====================================
-st.subheader("Histórico de Apostas")
+st.subheader("📚 Histórico de Apostas")
 
 hist = supabase.table("apostas_simuladas").select("*").execute()
 df_hist = pd.DataFrame(hist.data)
+
+if df_hist.empty:
+    df_hist = pd.DataFrame(columns=["id", "evento", "odd", "stake", "resultado"])
 
 if filtro_finalizadas and not df_hist.empty:
     df_hist = df_hist[df_hist["resultado"] != "pendente"]
 
 if df_hist.empty:
-    st.info("Sem apostas")
+    st.info("Sem apostas registradas.")
 
 else:
     for i, row in df_hist.iterrows():
         c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
 
-        c1.write(row.get("evento", ""))
-        c2.write(f"Odd {row.get('odd', 1)}")
-        c3.write(f"Stake {row.get('stake', 0)}")
+        with c1:
+            st.write(row.get("evento", ""))
+
+        with c2:
+            st.write(f"Odd {row.get('odd', 1)}")
+
+        with c3:
+            st.write(f"Stake R$ {row.get('stake', 0)}")
 
         resultado_atual = row.get("resultado", "pendente")
+        opcoes = ["pendente", "green", "red"]
+        indice = opcoes.index(resultado_atual) if resultado_atual in opcoes else 0
 
         with c4:
             resultado = st.selectbox(
                 "Resultado",
-                ["pendente", "green", "red"],
-                index=["pendente", "green", "red"].index(resultado_atual),
-                key=f"res{i}"
+                opcoes,
+                index=indice,
+                key=f"res_{i}"
             )
 
-        if st.button("Salvar", key=f"save{i}"):
+        if st.button("Salvar resultado", key=f"save_{i}"):
             supabase.table("apostas_simuladas").update(
                 {"resultado": resultado}
             ).eq("id", row["id"]).execute()
-            st.success("Resultado atualizado")
+            st.success("Resultado atualizado.")
+            st.rerun()
 
 # =====================================
-# GRAFICO BANCA
+# GRÁFICO
 # =====================================
-st.subheader("Evolução da Banca")
+st.subheader("📈 Evolução da Banca")
 
 saldo = BANKROLL_INICIAL
 historia = [saldo]
 
 for _, r in df_hist.iterrows():
-    stake = r.get("stake", 0)
-    odd = r.get("odd", 1)
+    stake = float(r.get("stake", 0) or 0)
+    odd = float(r.get("odd", 1) or 1)
     resultado = r.get("resultado", "pendente")
 
     if resultado == "green":
@@ -577,7 +643,7 @@ for _, r in df_hist.iterrows():
     if resultado == "red":
         saldo -= stake
 
-    historia.append(saldo)
+    historia.append(round(saldo, 2))
 
 df_chart = pd.DataFrame({
     "aposta": list(range(len(historia))),
