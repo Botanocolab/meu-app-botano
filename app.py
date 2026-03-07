@@ -1,5 +1,5 @@
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -8,27 +8,50 @@ import streamlit as st
 from supabase import create_client
 
 # =====================================
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO INICIAL
 # =====================================
-st.set_page_config(page_title="Botano+ | Engine V5", layout="wide")
+st.set_page_config(
+    page_title="BOTANO+ | Smart Betting Engine V5",
+    layout="wide"
+)
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-ODDS_API_KEY = st.secrets["ODDS_API_KEY"]
+# =====================================
+# SECRETS / CONEXÕES
+# =====================================
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    ODDS_API_KEY = st.secrets["ODDS_API_KEY"]
+except Exception:
+    st.error(
+        "Secrets não encontrados. Configure SUPABASE_URL, SUPABASE_KEY e ODDS_API_KEY no Streamlit."
+    )
+    st.stop()
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    st.error(f"Erro ao conectar no Supabase: {e}")
+    st.stop()
 
-# Estado local para preencher simulador
+# =====================================
+# SESSION STATE
+# =====================================
 if "selecionado_evento" not in st.session_state:
     st.session_state["selecionado_evento"] = ""
+
 if "selecionado_mercado" not in st.session_state:
     st.session_state["selecionado_mercado"] = ""
+
 if "selecionado_odd" not in st.session_state:
     st.session_state["selecionado_odd"] = 1.50
+
 if "selecionado_ev" not in st.session_state:
     st.session_state["selecionado_ev"] = 0.0
+
 if "selecionado_score" not in st.session_state:
     st.session_state["selecionado_score"] = 0.0
+
 if "selecionado_stake" not in st.session_state:
     st.session_state["selecionado_stake"] = 0.5
 
@@ -38,36 +61,56 @@ if "selecionado_stake" not in st.session_state:
 st.markdown("""
 <style>
     .stApp {
-        background: linear-gradient(180deg, #111111 0%, #191919 100%);
+        background: linear-gradient(180deg, #0b0b0c 0%, #151515 100%);
         color: #ffffff;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
 
     h1, h2, h3 {
         color: #ff5a2a !important;
         font-weight: 800 !important;
+        letter-spacing: -0.02em;
+    }
+
+    .botano-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+    }
+
+    .botano-subtitle {
+        color: #d0d0d0;
+        font-size: 18px;
+        font-weight: 400;
     }
 
     .botano-card {
-        background: #202020;
-        border: 1px solid #333333;
+        background: linear-gradient(180deg, #1a1a1a 0%, #171717 100%);
+        border: 1px solid #2f2f2f;
         border-left: 4px solid #ff5a2a;
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
     }
 
     .botano-titulo {
         color: #ff5a2a;
-        font-size: 1.15rem;
+        font-size: 1.18rem;
         font-weight: 800;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
 
     .botano-metric {
         font-size: 0.95rem;
         color: #d0d0d0;
-        margin-bottom: 5px;
+        margin-bottom: 6px;
+        line-height: 1.45;
     }
 
     .botano-strong {
@@ -76,18 +119,18 @@ st.markdown("""
     }
 
     .side-card {
-        background: #181818;
-        border: 1px solid #2b2b2b;
-        border-radius: 16px;
-        padding: 16px;
+        background: linear-gradient(180deg, #171717 0%, #131313 100%);
+        border: 1px solid #292929;
+        border-radius: 18px;
+        padding: 18px;
         margin-top: 14px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
     }
 
     .side-label {
         color: #b8b8b8;
         font-size: 13px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
     }
 
     .side-value {
@@ -99,17 +142,17 @@ st.markdown("""
 
     .badge-alta {
         color: #7CFFB2;
-        font-weight: 700;
+        font-weight: 800;
     }
 
     .badge-moderada {
         color: #FFD166;
-        font-weight: 700;
+        font-weight: 800;
     }
 
     .badge-baixa {
         color: #FF8FA3;
-        font-weight: 700;
+        font-weight: 800;
     }
 
     div.stButton > button {
@@ -117,9 +160,10 @@ st.markdown("""
         color: white !important;
         border-radius: 14px !important;
         width: 100% !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         border: none !important;
-        padding: 0.6rem 1rem !important;
+        padding: 0.72rem 1rem !important;
+        box-shadow: 0 8px 20px rgba(255, 90, 42, 0.20);
     }
 
     div.stButton > button:hover {
@@ -139,8 +183,16 @@ st.markdown("""
     }
 
     div[data-testid="stDataFrame"] {
-        border-radius: 14px;
+        border-radius: 16px;
         overflow: hidden;
+    }
+
+    .debug-box {
+        background: #111111;
+        border: 1px solid #2d2d2d;
+        border-radius: 14px;
+        padding: 14px;
+        color: #d8d8d8;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -149,10 +201,10 @@ st.markdown("""
 # HEADER
 # =====================================
 st.markdown("""
-<h1 style='display:flex;align-items:center;gap:10px'>
-⚡ <span style="color:#ff5a2a">BOTANO+</span>
-<span style="font-size:18px;color:#c9c9c9;font-weight:400">Smart Betting Engine V5</span>
-</h1>
+<div class="botano-title-wrap">
+    <h1 style="margin:0;">⚡ BOTANO+</h1>
+    <div class="botano-subtitle">Smart Betting Engine V5</div>
+</div>
 """, unsafe_allow_html=True)
 
 # =====================================
@@ -173,46 +225,33 @@ def formatar_decimal_br(valor: float) -> str:
 
 def badge_confianca(confianca: str) -> str:
     if confianca == "Alta":
-        return f'<span class="badge-alta">{confianca}</span>'
+        return '<span class="badge-alta">Alta</span>'
     if confianca == "Moderada":
-        return f'<span class="badge-moderada">{confianca}</span>'
-    return f'<span class="badge-baixa">{confianca}</span>'
+        return '<span class="badge-moderada">Moderada</span>'
+    return '<span class="badge-baixa">Baixa</span>'
 
 
-@st.cache_data(ttl=60)
-def buscar_odds(liga: str) -> tuple[pd.DataFrame, str | None]:
-    """
-    Busca odds reais da The Odds API.
-    """
-    url = f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
-    params = {
-        "apiKey": ODDS_API_KEY,
-        "regions": "eu",
-        "markets": "h2h",
-        "oddsFormat": "decimal"
-    }
-
+def formatar_data_iso(data_iso: str) -> str:
+    if not data_iso:
+        return "N/D"
     try:
-        response = requests.get(url, params=params, timeout=15)
+        dt = datetime.fromisoformat(data_iso.replace("Z", "+00:00"))
+        return dt.strftime("%d/%m %H:%M UTC")
+    except Exception:
+        return data_iso
 
-        if response.status_code == 200:
-            data = response.json()
-            return pd.DataFrame(data), None
 
-        try:
-            erro_api = response.json()
-        except Exception:
-            erro_api = response.text
-
-        return pd.DataFrame(), f"Erro API {response.status_code}: {erro_api}"
-
-    except requests.exceptions.RequestException as exc:
-        return pd.DataFrame(), f"Erro de conexão: {exc}"
+def construir_mercado(outcome: str) -> str:
+    if not outcome:
+        return "Seleção"
+    if outcome.lower() in ["draw", "empate"]:
+        return "Empate"
+    return f"Vitória do {outcome}"
 
 
 def calcular_score_botano(ev_percent: float, fair_prob_percent: float, best_odd: float) -> float:
     score = (ev_percent * 8) + (fair_prob_percent * 0.3) - (best_odd * 1.2)
-    return round(score, 1)
+    return round(score, 2)
 
 
 def calcular_stake_recomendada(ev_percent: float) -> tuple[float, str]:
@@ -224,20 +263,69 @@ def calcular_stake_recomendada(ev_percent: float) -> tuple[float, str]:
         return 1.0, "Moderada"
     return 0.5, "Baixa"
 
+# =====================================
+# API DE ODDS
+# =====================================
+@st.cache_data(ttl=60)
+def buscar_odds(liga: str) -> tuple[pd.DataFrame, str | None, Any]:
+    """
+    Busca odds na The Odds API v4.
+    Retorna:
+    - dataframe bruto
+    - mensagem de erro ou None
+    - json bruto para debug
+    """
+    url = f"https://api.the-odds-api.com/v4/sports/{liga}/odds"
 
-def construir_mercado(outcome: str) -> str:
-    if outcome.lower() in ["draw", "empate"]:
-        return "Empate"
-    return f"Vitória do {outcome}"
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "regions": "eu",
+        "markets": "h2h",
+        "oddsFormat": "decimal",
+        "dateFormat": "iso"
+    }
 
+    try:
+        response = requests.get(url, params=params, timeout=20)
 
+        if response.status_code == 200:
+            data = response.json()
+
+            if not isinstance(data, list):
+                return pd.DataFrame(), "Resposta inesperada da API.", data
+
+            if len(data) == 0:
+                return (
+                    pd.DataFrame(),
+                    "API respondeu, mas não existem jogos disponíveis no momento para essa liga.",
+                    data
+                )
+
+            return pd.DataFrame(data), None, data
+
+        try:
+            erro_json = response.json()
+        except Exception:
+            erro_json = response.text
+
+        return pd.DataFrame(), f"Erro API {response.status_code}: {erro_json}", erro_json
+
+    except requests.exceptions.RequestException as exc:
+        return pd.DataFrame(), f"Erro de conexão com a API: {exc}", None
+
+# =====================================
+# SCANNER BOTANO+
+# =====================================
 def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Extrai oportunidades reais usando:
-    - melhor odd por seleção
-    - média de odds por seleção
-    - probabilidade implícita normalizada por bookmaker
-    - EV real
+    Extrai oportunidades reais a partir do retorno da Odds API.
+    Estratégia:
+    - pega odds h2h de vários bookmakers
+    - calcula probabilidade implícita por casa
+    - normaliza para remover margem
+    - calcula fair probability média
+    - pega a melhor odd disponível no mercado
+    - calcula EV
     """
     oportunidades: list[dict[str, Any]] = []
 
@@ -289,7 +377,10 @@ def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
 
                 soma = sum(raw_probs)
                 if soma > 0 and nomes:
-                    probs_norm = {nomes[i]: raw_probs[i] / soma for i in range(len(nomes))}
+                    probs_norm = {
+                        nomes[i]: raw_probs[i] / soma
+                        for i in range(len(nomes))
+                    }
                     probabilidades_normalizadas_por_book.append(probs_norm)
 
         if not probabilidades_normalizadas_por_book:
@@ -305,6 +396,7 @@ def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
                 for probs in probabilidades_normalizadas_por_book
                 if outcome in probs
             ]
+
             if not probs_outcome:
                 continue
 
@@ -321,7 +413,6 @@ def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
             ev = (fair_prob * best_odd) - 1
             ev_percent = round(ev * 100, 2)
 
-            # filtro mínimo para scanner útil
             if best_odd < 1.40:
                 continue
 
@@ -354,7 +445,6 @@ def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
 
     df_op = pd.DataFrame(oportunidades)
 
-    # scanner principal
     df_op = df_op.sort_values(
         by=["ev_percent", "score_botano", "fair_prob_percent"],
         ascending=False
@@ -362,19 +452,17 @@ def extrair_oportunidades_reais(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_op
 
-
+# =====================================
+# SUPABASE
+# =====================================
 def registrar_aposta_supabase(
     liga_exibicao: str,
     oportunidade: dict[str, Any],
     valor_apostado: float,
     origem: str = "auto"
 ) -> tuple[bool, str]:
-    """
-    Registra aposta no Supabase.
-    Espera tabela apostas_simuladas com colunas compatíveis.
-    """
     payload = {
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "liga": liga_exibicao,
         "evento": oportunidade["evento"],
         "mercado": oportunidade["mercado"],
@@ -407,7 +495,7 @@ def registrar_aposta_manual_supabase(
     valor_apostado: float
 ) -> tuple[bool, str]:
     payload = {
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "liga": liga_exibicao,
         "evento": evento,
         "mercado": "Manual",
@@ -448,7 +536,9 @@ def carregar_historico_supabase() -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-
+# =====================================
+# MÉTRICAS HISTÓRICO
+# =====================================
 def calcular_metricas_historico(df_hist: pd.DataFrame) -> dict[str, float]:
     if df_hist.empty:
         return {
@@ -460,8 +550,14 @@ def calcular_metricas_historico(df_hist: pd.DataFrame) -> dict[str, float]:
         }
 
     total_apostas = len(df_hist)
-    total_apostado = float(df_hist["valor_apostado"].fillna(0).sum()) if "valor_apostado" in df_hist.columns else 0.0
-    lucro_total = float(df_hist["lucro_prejuizo"].fillna(0).sum()) if "lucro_prejuizo" in df_hist.columns else 0.0
+    total_apostado = (
+        float(df_hist["valor_apostado"].fillna(0).sum())
+        if "valor_apostado" in df_hist.columns else 0.0
+    )
+    lucro_total = (
+        float(df_hist["lucro_prejuizo"].fillna(0).sum())
+        if "lucro_prejuizo" in df_hist.columns else 0.0
+    )
 
     if "resultado" in df_hist.columns:
         greens = len(df_hist[df_hist["resultado"] == "green"])
@@ -481,7 +577,6 @@ def calcular_metricas_historico(df_hist: pd.DataFrame) -> dict[str, float]:
         "win_rate": round(win_rate, 2)
     }
 
-
 # =====================================
 # FILTROS
 # =====================================
@@ -489,17 +584,20 @@ liga_nome = st.selectbox("Escolha a Liga:", list(ligas.keys()))
 liga_api = ligas[liga_nome]
 
 f1, f2, f3 = st.columns(3)
+
 with f1:
     filtro_ev_min = st.number_input("EV mínimo (%)", value=4.0, min_value=0.0, step=0.5)
+
 with f2:
     filtro_odd_min = st.number_input("Odd mínima", value=1.60, min_value=1.01, step=0.05)
+
 with f3:
     filtro_odd_max = st.number_input("Odd máxima", value=3.50, min_value=1.05, step=0.05)
 
 # =====================================
 # CARGA DE DADOS
 # =====================================
-df_odds, erro_api = buscar_odds(liga_api)
+df_odds, erro_api, debug_json = buscar_odds(liga_api)
 df_oportunidades = extrair_oportunidades_reais(df_odds)
 df_historico = carregar_historico_supabase()
 metricas = calcular_metricas_historico(df_historico)
@@ -532,6 +630,7 @@ with col_left:
             st.markdown(f"""
             <div class="botano-card">
                 <div class="botano-titulo">{op['evento']}</div>
+                <div class="botano-metric"><span class="botano-strong">Início:</span> {formatar_data_iso(op['inicio'])}</div>
                 <div class="botano-metric"><span class="botano-strong">Entrada recomendada:</span> {op['mercado']}</div>
                 <div class="botano-metric"><span class="botano-strong">Seleção:</span> {op['selecao']}</div>
                 <div class="botano-metric"><span class="botano-strong">Melhor odd:</span> {op['best_odd']} | <span class="botano-strong">Odd média:</span> {op['avg_odd']}</div>
@@ -541,7 +640,7 @@ with col_left:
             </div>
             """, unsafe_allow_html=True)
 
-            c1, c2 = st.columns([1, 1])
+            c1, c2 = st.columns(2)
 
             with c1:
                 if st.button(
@@ -570,7 +669,7 @@ with col_left:
 
             with c2:
                 if st.button(
-                    f"Carregar no simulador #{i+1}",
+                    f"Carregar no simulador #{i + 1}",
                     key=f"carregar_{i}"
                 ):
                     st.session_state["selecionado_evento"] = op["evento"]
@@ -696,3 +795,19 @@ else:
     ]
     colunas_existentes = [c for c in colunas_preferidas if c in df_historico.columns]
     st.dataframe(df_historico[colunas_existentes], use_container_width=True)
+
+# =====================================
+# DEBUG
+# =====================================
+with st.expander("🛠 Debug da API"):
+    st.markdown('<div class="debug-box">', unsafe_allow_html=True)
+    st.write("Liga selecionada:", liga_nome)
+    st.write("Liga API:", liga_api)
+    st.write("Erro API:", erro_api)
+    st.write("Qtd. jogos retornados:", 0 if df_odds.empty else len(df_odds))
+    st.write("Colunas df_odds:", list(df_odds.columns) if not df_odds.empty else [])
+    st.write("Preview df_odds:")
+    st.dataframe(df_odds.head(3), use_container_width=True)
+    st.write("Resposta bruta:")
+    st.write(debug_json)
+    st.markdown('</div>', unsafe_allow_html=True)
