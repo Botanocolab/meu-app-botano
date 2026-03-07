@@ -31,25 +31,23 @@ h1,h2,h3{
     font-size:16px;
     line-height:1.6;
 }
-a.botao-voltar{
-    display:inline-block;
-    background:linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%);
+div.stButton > button{
+    background:linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%) !important;
     color:white !important;
-    text-decoration:none !important;
-    padding:12px 18px;
-    border-radius:14px;
-    font-weight:800;
-    margin-bottom:20px;
+    border:none !important;
+    border-radius:14px !important;
+    font-weight:800 !important;
+    width:100% !important;
+}
+a {
+    text-decoration: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("📘 Glossário do BOTANO+")
 
-st.markdown(
-    '<a class="botao-voltar" href="/">⬅ Voltar para o painel principal</a>',
-    unsafe_allow_html=True
-)
+st.page_link("app.py", label="⬅ Voltar para o painel principal", icon="⬅")
 
 st.markdown("""
 <div class="card">
