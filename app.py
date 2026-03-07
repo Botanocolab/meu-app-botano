@@ -1,3 +1,97 @@
+import streamlit as st
+
+# =========================================================
+# CONFIG
+# =========================================================
+st.set_page_config(
+    page_title="BOTANO+ Smart Betting Engine",
+    layout="wide"
+)
+
+# =========================================================
+# STATE
+# =========================================================
+if "pagina" not in st.session_state:
+    st.session_state["pagina"] = "painel"
+
+def abrir_glossario():
+    st.session_state["pagina"] = "glossario"
+
+def voltar_painel():
+    st.session_state["pagina"] = "painel"
+
+# =========================================================
+# CSS
+# =========================================================
+st.markdown("""
+<style>
+.stApp{
+    background: linear-gradient(180deg, #070707 0%, #111111 100%);
+    color: white;
+}
+
+html, body, [class*="css"] {
+    color: white;
+}
+
+h1, h2, h3 {
+    color:#ff5a2a !important;
+    font-weight:800 !important;
+}
+
+.card{
+    background:#181818;
+    border:1px solid #2c2c2c;
+    border-left:4px solid #ff5a2a;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.titulo{
+    color:#ff5a2a;
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.texto{
+    color:white;
+    font-size:16px;
+    line-height:1.6;
+}
+
+div.stButton > button {
+    background: linear-gradient(135deg,#ff5a2a 0%,#ff7a1a 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-weight: 800 !important;
+    padding: 0.75rem 1.2rem !important;
+    width: 100%;
+}
+
+div.stButton > button:hover {
+    color: white !important;
+    border: none !important;
+    opacity: 0.95;
+}
+
+label, .stSelectbox label, .stNumberInput label, .stSlider label {
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+input, textarea {
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# GLOSSÁRIO
+# =========================================================
 def render_glossario():
     st.title("📘 Glossário do BOTANO+")
 
@@ -45,3 +139,43 @@ def render_glossario():
             <div class="texto">{texto}</div>
         </div>
         """, unsafe_allow_html=True)
+
+# =========================================================
+# PAINEL
+# =========================================================
+def render_painel():
+    col1, col2 = st.columns([8, 1])
+
+    with col1:
+        st.title("BOTANO+ Smart Betting Engine")
+
+    with col2:
+        st.write("")
+        st.write("")
+        st.button("📘 Glossário", on_click=abrir_glossario)
+
+    st.markdown("### Scanner e painel principal")
+
+    st.markdown("""
+    <div class="card">
+        <div class="titulo">Painel BOTANO+</div>
+        <div class="texto">
+            O glossário está funcionando corretamente.<br><br>
+            Agora você pode recolocar aqui o conteúdo real do sistema:
+            scanner, ranking, simulador, histórico, métricas e gráfico da banca.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# =========================================================
+# ROTEAMENTO
+# =========================================================
+try:
+    if st.session_state["pagina"] == "glossario":
+        render_glossario()
+    else:
+        render_painel()
+
+except Exception as e:
+    st.error("O app encontrou um erro ao renderizar.")
+    st.code(str(e))
