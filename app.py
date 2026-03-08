@@ -639,6 +639,145 @@ def detect_smart_money(opening_odd: float, current_odd: float) -> bool:
     """Detecta Smart Money."""
     return odds_drop_percentage(opening_odd, current_odd) >= 5
 
+def build_real_opportunities(events, min_ev_percent=1.0, min_bookmakers=2):
+    rows = []
+
+    for event in events:
+        try:
+            home = event.get("home_team")
+            away = event.get("away_team")
+            game = f"{home} x {away}"
+            sport_key = event.get("sport_key", "")
+            commence_time = event.get("commence_time")
+
+            bookmakers = event.get("bookmakers", [])
+            grouped = {}
+
+            for book in bookmakers:
+                bm_key = book.get("key", "")
+                bm_title = book.get("title", bm_key)
+                bm_url = BOOKMAKER_URLS.get(
+                    bm_key,
+                    "https://www.google.com/search?q=" + str(bm_title).replace(" ", "+")
+                )
+
+                for market in book.get("markets", []):
+                    market_key = market.get("key")
+
+                    if market_key not in SUPPORTED_MARKETS:
+                        continue
+
+                    outcomes = market.get("outcomes", [])
+
+                    for outcome in outcomes:
+                        odd = outcome.get("price")
+                        name = outcome.get("name")
+                        point = outcome.get("point", None)
+
+                        if odd is None or odd <= 1 or not name:
+                            continue
+
+                        group_key = (market_key, point, name)
+
+                        if group_key not in grouped:
+                            grouped[group_key] = {
+                                "market_key": market_key,
+                                "point": point,
+                                "name": name,
+                                "prices": [],
+                                "books": [],
+                            }
+
+                        grouped[group_key]["prices"].append(float(odd))
+                        grouped[group_key]["books"].append({
+                            "key": bm_key,
+                            "title": bm_title,
+                            "url": bm_url,
+                            "odd": float(odd)
+                        })
+
+            for (_, _, _), item in grouped.items():
+                prices = item["prices"]
+
+                if len(prices) < min_bookmakers:
+                    continue
+
+                avg_odd = sum(prices) / len(prices)
+                fair_prob = 1 / avg_odd if avg_odd > 1 else 0
+
+                best_book = max(item["books"], key=lambda x: x["odd"])
+                best_odd = best_book["odd"]
+
+                ev = calculate_ev(fair_prob, best_odd)
+                ev_percent = ev * 100
+
+                if ev_percent < min_ev_percent:
+                    continue
+
+                market_key = item["market_key"]
+                point = item["point"]
+                selection_name = item["name"]
+
+                if market_key == "h2h":
+                    mercado = "1X2"
+                    selecao = selection_name
+                elif market_key == "totals_corners":
+                    mercado = "Escanteios"
+                    selecao = f"{selection_name} {point}" if point is not None else selection_name
+                elif market_key == "totals_cards":
+                    mercado = "Cartões"
+                    selecao = f"{selection_name} {point}" if point is not None else selection_name
+                else:
+                    mercado = market_key
+                    selecao = selection_name
+
+                fair_prob_percent = fair_prob * 100
+                liquidity = min(len(prices) / 10, 1)
+                volatility = min(best_odd / 10, 1)
+                confidence = max(0, min(100, (ev_percent * 6) + (fair_prob_percent * 0.35)))
+
+                score_botano = calculate_botano_score(
+                    ev_percent=ev_percent,
+                    liquidity=liquidity,
+                    volatility=volatility,
+                    confidence=confidence
+                )
+
+                rows.append({
+                    "sport_key": sport_key,
+                    "game": game,
+                    "market": mercado,
+                    "selection": selecao,
+                    "market_key": market_key,
+                    "point": point,
+                    "best_odd": round(best_odd, 2),
+                    "avg_odd": round(avg_odd, 2),
+                    "fair_prob": round(fair_prob, 4),
+                    "fair_prob_percent": round(fair_prob_percent, 2),
+                    "ev": round(ev, 4),
+                    "ev_percent": round(ev_percent, 2),
+                    "score_botano": round(score_botano, 2),
+                    "confidence": round(confidence, 2),
+                    "liquidity": round(liquidity, 2),
+                    "volatility": round(volatility, 2),
+                    "bookmakers_count": len(prices),
+                    "best_bookmaker": best_book["title"],
+                    "best_bookmaker_url": best_book["url"],
+                    "commence_time": commence_time,
+                    "stake_pct": suggest_kelly_stake(ev, best_odd, bankroll=100) if ev > 0 else 0
+                })
+
+        except Exception:
+            continue
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df = df[df["best_odd"] >= 1.20].copy()
+    df.sort_values(by=["score_botano", "ev_percent"], ascending=[False, False], inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return df
 
 def process_data(events, bankroll):
 
