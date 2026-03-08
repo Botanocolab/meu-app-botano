@@ -2269,7 +2269,7 @@ tripla_df = build_tripla_do_dia(ranked_df) if not ranked_df.empty else pd.DataFr
 history_df = fetch_bet_history(limit=50)
 BANKROLL_INICIAL = 1500.0
 metrics = compute_dashboard_metrics(history_df, BANKROLL_INICIAL)
-roi_df = build_roi_series(history_df, base_bankroll)
+roi_df = build_roi_series(history_df, BANKROLL_INICIAL)
 
 
 # ============================================================
