@@ -529,19 +529,16 @@ SUPPORTED_MARKETS = [
     "totals",
     "btts",
     "totals_corners",
-    "totals_cards",
+        "totals_cards",
 ]
 
 MARKET_LABELS = {
     "h2h": "Vencedor (1x2)",
-    "totals": "Gols",
-    "btts": "BTTS",
     "totals_corners": "Escanteios",
     "totals_cards": "Cartões",
 }
 
 MARKET_PRIORITY_LINES = {
-    "totals": [1.5, 2.5, 3.5],
     "totals_corners": [8.5, 9.5, 10.5, 11.5],
     "totals_cards": [3.5, 4.5, 5.5, 6.5],
 }
