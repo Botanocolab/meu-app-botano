@@ -1325,26 +1325,7 @@ with st.spinner("Escaneando oportunidades do mercado..."):
     all_events = []
 
     for league in AUTO_LEAGUES:
-        sport_key = league_map.get(league)
-
-        if not sport_key:
-            continue
-
-        events = fetch_odds_data(
-            sport_key=sport_key,
-            api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
-            region=AUTO_REGION
-        )
-
-        if events:
-            all_events.extend(events)
-
-with st.spinner("Escaneando oportunidades do mercado..."):
-
-    all_events = []
-
-    for league in AUTO_LEAGUES:
-        sport_key = league_map.get(league)
+        sport_key = SPORTS_MAP.get(league)
 
         if not sport_key:
             continue
