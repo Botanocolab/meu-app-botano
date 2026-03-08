@@ -8,12 +8,57 @@ import streamlit as st
 from supabase import Client, create_client
 
 
-st.set_page_config(
-    page_title="BOTANO+ Smart Betting Engine V5.1",
-    page_icon="⚽",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.markdown("""
+<style>
+
+/* ===== SELECTBOX ===== */
+div[data-baseweb="select"] > div {
+    background-color: #1e1e1e !important;
+    color: white !important;
+    border: 1px solid #444 !important;
+}
+
+/* texto dentro do select */
+div[data-baseweb="select"] span {
+    color: white !important;
+}
+
+/* ===== MENU DROPDOWN ===== */
+ul[role="listbox"] {
+    background-color: #1e1e1e !important;
+    color: white !important;
+}
+
+/* opções do dropdown */
+li[role="option"] {
+    background-color: #1e1e1e !important;
+    color: white !important;
+}
+
+/* hover nas opções */
+li[role="option"]:hover {
+    background-color: #333 !important;
+}
+
+/* ===== MULTISELECT TAGS ===== */
+span[data-baseweb="tag"] {
+    background-color: #ff6b00 !important;
+    color: white !important;
+}
+
+/* ===== INPUTS ===== */
+input, textarea {
+    background-color: #1e1e1e !important;
+    color: white !important;
+}
+
+/* ===== LABELS ===== */
+label {
+    color: #dddddd !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 
 # ============================================================
