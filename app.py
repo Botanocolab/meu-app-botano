@@ -7,6 +7,22 @@ import requests
 import streamlit as st
 from supabase import Client, create_client
 
+# ==============================
+# BOOKMAKERS
+# ==============================
+
+BOOKMAKER_URLS = {
+    "bet365": "https://www.bet365.com",
+    "betfair": "https://www.betfair.com",
+    "pinnacle": "https://www.pinnacle.com",
+    "bwin": "https://sports.bwin.com",
+    "williamhill": "https://sports.williamhill.com",
+    "betway": "https://betway.com",
+    "unibet": "https://www.unibet.com",
+    "1xbet": "https://1xbet.com",
+    "10bet": "https://www.10bet.com",
+    "marathonbet": "https://www.marathonbet.com",
+}
 
 st.markdown("""
 <style>
