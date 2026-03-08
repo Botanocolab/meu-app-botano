@@ -1332,7 +1332,7 @@ with st.spinner("Escaneando oportunidades do mercado..."):
         if events:
             all_events.extend(events)
 
-    with st.spinner("Escaneando oportunidades do mercado..."):
+with st.spinner("Escaneando oportunidades do mercado..."):
 
     all_events = []
 
