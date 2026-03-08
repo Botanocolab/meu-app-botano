@@ -7,6 +7,13 @@ import requests
 import streamlit as st
 from supabase import Client, create_client
 
+league_map = {
+    "Brasileirão Série A": "soccer_brazil_campeonato",
+    "Brasileirão Série B": "soccer_brazil_serie_b",
+    "Copa do Brasil": "soccer_brazil_copa_do_brasil",
+    "Libertadores": "soccer_conmebol_libertadores"
+}
+
 AUTO_REGION = "eu"
 
 AUTO_LEAGUES = [
