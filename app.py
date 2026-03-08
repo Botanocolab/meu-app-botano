@@ -1843,7 +1843,7 @@ def render_opportunity_card(row: pd.Series) -> None:
         unsafe_allow_html=True,
     )
 
-        col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
     with col1:
         bookmaker = row.get("best_bookmaker", "Casa")
