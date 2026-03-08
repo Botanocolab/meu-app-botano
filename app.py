@@ -1843,10 +1843,21 @@ def render_opportunity_card(row: pd.Series) -> None:
         unsafe_allow_html=True,
     )
 
-col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-with col1:
-    bookmaker = row.get("best_bookmaker", "Casa")
+    with col1:
+        bookmaker = row.get("best_bookmaker", "Casa")
+        link = row.get("bookmaker_link", "")
+
+        if link:
+            st.markdown(f"[🌐 Abrir {bookmaker}]({link})")
+        else:
+            st.button(f"🌐 Abrir {bookmaker}", key=f"open_{row.name}")
+
+    with col2:
+        if st.button("🎯 Apostar", key=f"bet_{row.name}"):
+            st.session_state["selected_bet"] = row.to_dict()
+            st.success("Aposta enviada para o simulador.")
     link = row.get("bookmaker_link", "")
 
     if link:
