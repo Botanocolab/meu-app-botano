@@ -85,16 +85,12 @@ SPORTS_MAP = {
 
 SUPPORTED_MARKETS = [
     "h2h",
-    "totals",
-    "btts",
     "totals_corners",
     "totals_cards",
 ]
 
 MARKET_NAMES = {
     "h2h": "Vencedor (1x2)",
-    "totals": "Over/Under Gols",
-    "btts": "Ambas Marcam",
     "totals_corners": "Escanteios",
     "totals_cards": "Cartões",
 }
