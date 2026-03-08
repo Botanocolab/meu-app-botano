@@ -983,55 +983,58 @@ def main() -> None:
             "Champions League": "soccer_uefa_champs_league",
         }
 
-        selected_league = st.selectbox(
-            "Liga",
-            list(league_map.keys()),
-            index=0,
-        )
+    selected_league = st.selectbox(
+        "Liga",
+        list(league_map.keys()),
+        index=0,
+        key="selected_league_top"
+    )
 
-        selected_region = st.selectbox(
-            "Região das odds",
-            ["eu", "uk", "us", "au"],
-            index=0,
-        )
+    selected_region = st.selectbox(
+        "Região das odds",
+        ["eu", "uk", "us", "au"],
+        index=0,
+        key="selected_region_top"
+    )
 
-        ev_min = st.slider(
-            "EV mínimo (%)",
-            min_value=-2.0,
-            max_value=20.0,
-            value=1.0,
-            step=0.5,
-        )
+    ev_min = st.slider(
+        "EV mínimo (%)",
+        min_value=-2.0,
+        max_value=20.0,
+        value=1.0,
+        step=0.5,
+        key="ev_min_slider_top"
+    )
 
-        score_min = st.slider(
-            "Score mínimo",
-            min_value=0,
-            max_value=100,
-            value=58,
-            step=1,
-        )
+    score_min = st.slider(
+        "Score mínimo",
+        min_value=0,
+        max_value=100,
+        value=58,
+        step=1,
+        key="score_min_slider_top"
+    )
 
-        mercados_selecionados = st.multiselect(
-            "Mercados",
-            options=list(MARKET_LABELS.keys()),
-            default=list(MARKET_LABELS.keys()),
-            format_func=lambda x: MARKET_LABELS.get(x, x),
-        )
+    mercados_selecionados = st.multiselect(
+        "Mercados",
+        options=list(MARKET_LABELS.keys()),
+        default=list(MARKET_LABELS.keys()),
+        key="mercados_multiselect_top"
+    )
 
-        st.markdown("---")
-        st.markdown("## 🔐 Integrações")
+st.markdown("----")
+st.markdown("## 🔐 Integrações")
 
-        odds_api_key = st.secrets.get("THE_ODDS_API_KEY", "")
-        if odds_api_key:
-            st.success("The Odds API conectada")
-        else:
-            st.warning("Defina THE_ODDS_API_KEY no st.secrets.")
+odds_api_key = st.secrets.get("THE_ODDS_API_KEY", "")
+if odds_api_key:
+    st.success("The Odds API conectada")
+else:
+    st.warning("Defina THE_ODDS_API_KEY no st.secrets.")
 
-        if get_supabase_client():
-            st.success("Supabase conectado")
-        else:
-            st.info("Supabase opcional: configure SUPABASE_URL e SUPABASE_KEY.")
-
+if get_supabase_client():
+    st.success("Supabase conectado")
+else:
+    st.info("Supabase opcional: configure SUPABASE_URI e SUPABASE_KEY.")
     sport_key = league_map[selected_league]
 
     with st.spinner("Escaneando oportunidades do mercado..."):
@@ -1854,15 +1857,43 @@ def render_history_card(row: pd.Series) -> None:
 # SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.markdown("## 🎯 Filtros Sniper")
-    league_name = st.selectbox("Liga", list(SPORTS_MAP.keys()), index=0)
-    region = st.selectbox("Região das odds", ["eu", "uk", "us", "au"], index=0)
-    ev_min = st.slider("EV mínimo (%)", min_value=-2.0, max_value=20.0, value=1.0, step=0.5)
-    score_min = st.slider("Score mínimo", min_value=0, max_value=100, value=58, step=1)
+    st.markdown("🎯 🔥 Filtros Sniper")
+
+    league_name = st.selectbox(
+        "Liga",
+        list(SPORTS_MAP.keys()),
+        index=0,
+        key="league_selector_main"
+    )
+
+    region = st.selectbox(
+        "Região das odds",
+        ["eu", "uk", "us", "au"],
+        index=0,
+        key="region_selector_main"
+    )
+
+    ev_min = st.slider(
+        "EV mínimo (%)",
+        min_value=-2.0,
+        max_value=20.0,
+        value=1.0,
+        step=0.5,
+        key="ev_min_slider_main"
+    )
+
+    score_min = st.slider(
+        "Score mínimo",
+        min_value=0,
+        max_value=100,
+        value=58,
+        step=1,
+        key="score_min_slider_main"
+    )
+
     selected_families = st.multiselect(
         "Mercados",
         ["1x2", "Gols", "BTTS", "Escanteios", "Cartões"],
-        default=["1x2", "Gols", "BTTS", "Escanteios", "Cartões"],
     )
 
     st.markdown("---")
