@@ -1055,7 +1055,13 @@ def render_history_card(row: pd.Series) -> None:
 # ============================================================
 # MAIN APPLICATION
 # ============================================================
+
+# ========================================
+# MAIN
+# ========================================
+
 def main():
+
     # SIDEBAR
     with st.sidebar:
         st.markdown(
@@ -1069,17 +1075,27 @@ def main():
         )
 
         st.subheader("Configurações de API")
-        api_key = st.text_input("Odds API Key", type="password", value=st.secrets.get("ODDS_API_KEY", ""))
+        api_key = st.text_input(
+            "Odds API Key",
+            type="password",
+            value=st.secrets.get("ODDS_API_KEY", ""),
+        )
         region = st.selectbox("Região das Odds", ["eu", "us", "uk", "au"], index=0)
 
         st.divider()
 
         st.subheader("Gestão de Banca")
-        base_bankroll = st.number_input("Banca Inicial (R$)", value=1000.0, step=100.0)
+        base_bankroll = st.number_input(
+            "Banca Inicial (R$)",
+            value=1000.0,
+            step=100.0,
+        )
         kelly_pct = st.slider("Agressividade Kelly (%)", 1, 100, 50) / 100.0
 
         st.divider()
-        st.info("O Score Botano combina EV, Liquidez e Volatilidade para encontrar as melhores oportunidades.")
+        st.info(
+            "O Score Botano combina EV, Liquidez e Volatilidade para encontrar as melhores oportunidades."
+        )
 
     # HEADER HERO
     st.markdown(
@@ -1108,73 +1124,109 @@ def main():
         render_metric_card("Win Rate", f"{metrics['winrate']:.1f}%")
 
     # TABS
-    tab_ops, tab_tripla, tab_history = st.tabs([
-        "🔥 Oportunidades de Valor",
-        "🎯 Tripla do Dia",
-        "📊 Histórico & Performance"
-    ])
+    tab_ops, tab_tripla, tab_history = st.tabs(
+        [
+            "🔥 Oportunidades de Valor",
+            "🎯 Tripla do Dia",
+            "📊 Histórico & Performance",
+        ]
+    )
+
+    df_ops = pd.DataFrame()
 
     # TAB 1: OPPORTUNITIES
     with tab_ops:
         col_filter, col_sort = st.columns([2, 1])
+
         with col_filter:
             selected_sports = st.multiselect(
-                "Filtrar Ligas", 
-                list(SPORTS_MAP.keys()), 
-                default=list(SPORTS_MAP.keys())
+                "Filtrar Ligas",
+                list(SPORTS_MAP.keys()),
+                default=list(SPORTS_MAP.keys()),
             )
-        
+
+        with col_sort:
+            st.write("")
+            st.write("")
+
         all_events = []
+
         with st.spinner("Escaneando mercados..."):
             for sport_name in selected_sports:
                 sport_key = SPORTS_MAP[sport_name]
                 data = fetch_odds_data(sport_key, api_key, region)
-                all_events.extend(data)
+                if data:
+                    all_events.extend(data)
 
         if not all_events:
-            st.warning("Nenhum dado encontrado. Verifique sua API Key ou as ligas selecionadas.")
+            st.warning(
+                "Nenhum dado encontrado. Verifique sua API Key ou as ligas selecionadas."
+            )
         else:
             df_ops = build_ranked_dataframe(all_events)
+
             if df_ops.empty:
                 st.info("Nenhuma oportunidade encontrada com os critérios atuais.")
             else:
                 for _, row in df_ops.iterrows():
                     render_opportunity_card(row)
-                    
-                    # Simulation Button
-                    with st.expander(f"Simular Aposta: {row['selection']} @ {row['best_odd']:.2f}"):
+
+                    with st.expander(
+                        f"Simular Aposta: {row['selection']} @ {safe_float(row['best_odd'], 0):.2f}"
+                    ):
                         c1, c2 = st.columns(2)
+
                         with c1:
-                            suggested_stake = metrics["bankroll"] * row["kelly"] * kelly_pct
-                            stake = st.number_input("Valor da Aposta (R$)", value=float(round(suggested_stake, 2)), key=f"stake_{row['event_name']}_{row['selection']}")
+                            suggested_stake = (
+                                metrics["bankroll"]
+                                * safe_float(row.get("kelly", 0), 0)
+                                * kelly_pct
+                            )
+
+                            if suggested_stake <= 0:
+                                suggested_stake = 25.0
+
+                            stake = st.number_input(
+                                "Valor da Aposta (R$)",
+                                value=float(round(suggested_stake, 2)),
+                                key=f"stake_{row['event_name']}_{row['selection']}",
+                            )
+
                         with c2:
                             st.write("")
-                            if st.button("Confirmar Registro", key=f"btn_{row['event_name']}_{row['selection']}"):
+                            if st.button(
+                                "Confirmar Registro",
+                                key=f"btn_{row['event_name']}_{row['selection']}",
+                            ):
                                 payload = {
                                     "evento": row["event_name"],
                                     "mercado": row["market_name"],
                                     "selecao": row["selection"],
-                                    "odd_fechamento": row["best_odd"],
-                                    "valor_apostado": stake,
+                                    "odd_fechamento": safe_float(row.get("best_odd", 0), 0),
+                                    "valor_apostado": float(stake),
                                     "status": "pendente",
                                     "lucro_prejuizo": 0.0,
-                                    "created_at": datetime.now(timezone.utc).isoformat()
+                                    "created_at": datetime.now(timezone.utc).isoformat(),
                                 }
+
                                 ok, msg = insert_bet_record(payload)
-                                if ok: st.success(msg)
-                                else: st.error(msg)
+                                if ok:
+                                    st.success(msg)
+                                else:
+                                    st.error(msg)
 
     # TAB 2: TRIPLA
     with tab_tripla:
-        if 'df_ops' in locals() and not df_ops.empty:
+        if not df_ops.empty:
             df_tripla = build_tripla_do_dia(df_ops)
+
             if not df_tripla.empty:
                 total_odd = df_tripla["best_odd"].prod()
                 st.markdown(f"### Odd Total: {total_odd:.2f}")
-                
+
                 for i, (_, row) in enumerate(df_tripla.iterrows()):
                     render_tripla_card(row, i)
-                
+
                 if st.button("Registrar Tripla Completa"):
                     st.info("Funcionalidade de registro de múltiplas em desenvolvimento.")
             else:
@@ -1188,11 +1240,12 @@ def main():
             st.info("Nenhum histórico de apostas encontrado no Supabase.")
         else:
             col_chart, col_list = st.columns([3, 2])
+
             with col_chart:
                 st.subheader("Evolução da Banca")
                 roi_data = build_roi_series(history_df, base_bankroll)
                 st.line_chart(roi_data.set_index("Aposta")["Banca"])
-            
+
             with col_list:
                 st.subheader("Últimas Entradas")
                 for _, row in history_df.iterrows():
@@ -1202,12 +1255,13 @@ def main():
     st.markdown(
         f"""
         <div class="footer-note">
-            BOTANO+ Engine v5.1 • Developed for High-Frequency Value Betting • 
+            BOTANO+ Engine v5.1 • Developed for High-Frequency Value Betting •
             Status: <span style="color:{GREEN_COLOR}">Sistema Online</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 if __name__ == "__main__":
     main()
