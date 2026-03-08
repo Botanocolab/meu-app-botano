@@ -1035,7 +1035,7 @@ def render_history_card(row: pd.Series) -> None:
                     Kelly {safe_float(row.get("kelly_stake")):.2f}%
                 </span>
                 <span class="badge" style="background:{status_color}22;color:{status_color};border-color:{status_color}44;">
-                    Status {status.upper()}
+                Status {status.upper()}
                 </span>
             </div>
         </div>
