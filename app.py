@@ -1937,9 +1937,10 @@ with st.sidebar:
     )
 
     selected_families = st.multiselect(
-        "Mercados",
-        ["1x2", "Gols", "BTTS", "Escanteios", "Cartões"],
-    )
+    "Mercados",
+    ["1x2", "Escanteios", "Cartões"],
+    default=["1x2", "Escanteios", "Cartões"],
+)
 
     st.markdown("---")
     st.markdown("## 🔐 Integrações")
