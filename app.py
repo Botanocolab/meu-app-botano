@@ -1368,6 +1368,11 @@ with st.spinner("Escaneando oportunidades do mercado..."):
     tripla_df = build_tripla_do_dia(opportunities_df) if not opportunities_df.empty else pd.DataFrame()
     history_df = fetch_bet_history(limit=20)
     roi_df = build_roi_series(history_df, BANKROLL_INICIAL)
+
+if not roi_df.empty:
+    st.line_chart(roi_df.set_index("Aposta"))
+else:
+    st.info("Sem dados suficientes para exibir o ROI ainda.")
     metrics = compute_dashboard_metrics(history_df, BANKROLL_INICIAL)
 
     metric_cols = st.columns(4)
