@@ -1237,10 +1237,11 @@ else:
         region=selected_region,
     )
 
-    opportunities_df = process_data(
-        events,
-        bankroll=bankroll_inicial
-    )
+    opportunities_df = build_real_opportunities(
+    events,
+    min_ev_percent=1.0,
+    min_bookmakers=2
+)
 
     if opportunities_df.empty:
         st.warning(
