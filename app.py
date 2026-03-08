@@ -1334,6 +1334,7 @@ with st.spinner("Escaneando oportunidades do mercado..."):
 
     with st.spinner("Escaneando oportunidades do mercado..."):
 
+    all_events = []
 
     for league in AUTO_LEAGUES:
         sport_key = league_map.get(league)
@@ -1348,6 +1349,7 @@ with st.spinner("Escaneando oportunidades do mercado..."):
         )
 
         if events:
+            all_events.extend(events)
 
     opportunities_df = build_real_opportunities(
         all_events,
