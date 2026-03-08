@@ -1052,10 +1052,6 @@ def render_history_card(row: pd.Series) -> None:
     )
 
 
-# ============================================================
-# MAIN APPLICATION
-# ============================================================
-
 # ========================================
 # MAIN
 # ========================================
@@ -1112,7 +1108,7 @@ def main():
             "O Score Botano combina EV, Liquidez e Volatilidade para encontrar as melhores oportunidades."
         )
 
-    # HEADER HERO
+    # HERO
     st.markdown(
         f"""
         <div class="hero">
@@ -1123,9 +1119,13 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # DATA FETCHING
+    # HISTÓRICO
     history_df = fetch_bet_history()
-    metrics = compute_dashboard_metrics(history_df, base_bankroll)
+
+    metrics = compute_dashboard_metrics(
+        history_df,
+        base_bankroll
+    )
 
     # METRICS
     m1, m2, m3, m4 = st.columns(4)
@@ -1143,18 +1143,16 @@ def main():
         render_metric_card("Win Rate", f"{metrics['winrate']:.1f}%")
 
     # TABS
-    tab_ops, tab_tripla, tab_history = st.tabs(
-        [
-            "🔥 Oportunidades de Valor",
-            "🎯 Tripla do Dia",
-            "📊 Histórico & Performance"
-        ]
-    )
+    tab_ops, tab_tripla, tab_history = st.tabs([
+        "🔥 Oportunidades de Valor",
+        "🎯 Tripla do Dia",
+        "📊 Histórico & Performance"
+    ])
 
     df_ops = pd.DataFrame()
 
     # ========================================
-    # TAB 1 - OPORTUNIDADES
+    # TAB OPORTUNIDADES
     # ========================================
 
     with tab_ops:
@@ -1194,7 +1192,9 @@ def main():
 
             if df_ops.empty:
 
-                st.info("Nenhuma oportunidade encontrada com os critérios atuais.")
+                st.info(
+                    "Nenhuma oportunidade encontrada com os critérios atuais."
+                )
 
             else:
 
@@ -1230,7 +1230,7 @@ def main():
                                 "evento": row["event_name"],
                                 "mercado": row["market_name"],
                                 "selecao": row["selection"],
-                                "odd_fechamento": safe_float(row.get("best_odd", 0)),
+                                "odd_fechamento": safe_float(row.get("best_odd",0)),
                                 "valor_apostado": float(stake),
                                 "status": "pendente",
                                 "lucro_prejuizo": 0.0,
@@ -1245,7 +1245,7 @@ def main():
                                 st.error(msg)
 
     # ========================================
-    # TAB 2 - TRIPLA
+    # TAB TRIPLA
     # ========================================
 
     with tab_tripla:
@@ -1264,15 +1264,13 @@ def main():
                     render_tripla_card(row, i)
 
             else:
-
                 st.info("Dados insuficientes para gerar a tripla.")
 
         else:
-
             st.info("Carregue as oportunidades para gerar a tripla.")
 
     # ========================================
-    # TAB 3 - HISTÓRICO
+    # TAB HISTÓRICO
     # ========================================
 
     with tab_history:
@@ -1289,9 +1287,14 @@ def main():
 
                 st.subheader("Evolução da Banca")
 
-                roi_data = build_roi_series(history_df, base_bankroll)
+                roi_data = build_roi_series(
+                    history_df,
+                    base_bankroll
+                )
 
-                st.line_chart(roi_data.set_index("Aposta")["Banca"])
+                st.line_chart(
+                    roi_data.set_index("Aposta")["Banca"]
+                )
 
             with col_list:
 
