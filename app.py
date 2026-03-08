@@ -1843,6 +1843,21 @@ def render_opportunity_card(row: pd.Series) -> None:
         unsafe_allow_html=True,
     )
 
+col1, col2 = st.columns(2)
+
+with col1:
+    bookmaker = row.get("best_bookmaker", "Casa")
+    link = row.get("bookmaker_link", "")
+
+    if link:
+        st.markdown(f"[🌐 Abrir {bookmaker}]({link})")
+    else:
+        st.button(f"🌐 Abrir {bookmaker}", key=f"open_{row.name}")
+
+with col2:
+    if st.button("🎯 Apostar", key=f"bet_{row.name}"):
+        st.session_state["selected_bet"] = row.to_dict()
+        st.success("Aposta enviada para o simulador.")
 
 def render_tripla_card(row: pd.Series, position: int) -> None:
     st.markdown(
@@ -2167,12 +2182,16 @@ with right_col:
 # ============================================================
 # RANKING AS CARDS
 # ============================================================
+
+# RANKING AS CARDS
 st.markdown("## 📋 Ranking das Melhores Apostas")
+
 if ranked_df.empty:
     st.info("Sem ranking para exibir no momento.")
 else:
     top_rank = min(len(ranked_df), 6)
     rank_columns = st.columns(2)
+
     for idx in range(top_rank):
         target_column = rank_columns[idx % 2]
         with target_column:
