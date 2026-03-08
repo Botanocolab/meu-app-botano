@@ -25,6 +25,7 @@ AUTO_LEAGUES = [
 
 AUTO_MARKETS = ["h2h", "totals_corners", "totals_cards"]
 
+BANKROLL_INICIAL = 1500.0
 AUTO_MIN_EV = 0.3
 AUTO_SCORE_MIN = 5
 
@@ -1244,7 +1245,7 @@ def compute_dashboard_metrics(history_df: pd.DataFrame, bankroll_inicial: float)
 
 
 def main() -> None:
-    bankroll_inicial = 1500.0
+    
 
     st.markdown(
         """
@@ -1366,8 +1367,8 @@ with st.spinner("Escaneando oportunidades do mercado..."):
 
     tripla_df = build_tripla_do_dia(opportunities_df) if not opportunities_df.empty else pd.DataFrame()
     history_df = fetch_bet_history(limit=20)
-    roi_df = build_roi_series(history_df, bankroll_inicial)
-    metrics = compute_dashboard_metrics(history_df, bankroll_inicial)
+    roi_df = build_roi_series(history_df, BANKROLL_INICIAL)
+    metrics = compute_dashboard_metrics(history_df, BANKROLL_INICIAL)
 
     metric_cols = st.columns(4)
     with metric_cols[0]:
@@ -2266,8 +2267,8 @@ if not ranked_df.empty:
 
 tripla_df = build_tripla_do_dia(ranked_df) if not ranked_df.empty else pd.DataFrame()
 history_df = fetch_bet_history(limit=50)
-base_bankroll = 1500.0
-metrics = compute_dashboard_metrics(history_df, base_bankroll)
+BANKROLL_INICIAL = 1500.0
+metrics = compute_dashboard_metrics(history_df, BANKROLL_INICIAL)
 roi_df = build_roi_series(history_df, base_bankroll)
 
 
