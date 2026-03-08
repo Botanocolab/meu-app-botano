@@ -1239,8 +1239,8 @@ else:
 
     opportunities_df = build_real_opportunities(
     events,
-    min_ev_percent=1.0,
-    min_bookmakers=2
+    min_ev_percent=0.5,
+    min_bookmakers=1
 )
 
     if opportunities_df.empty:
