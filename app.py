@@ -7,6 +7,20 @@ import requests
 import streamlit as st
 from supabase import Client, create_client
 
+AUTO_REGION = "eu"
+
+AUTO_LEAGUES = [
+    "Brasileirão Série A",
+    "Brasileirão Série B",
+    "Copa do Brasil",
+    "Libertadores"
+]
+
+AUTO_MARKETS = ["h2h", "totals_corners", "totals_cards"]
+
+AUTO_MIN_EV = 0.3
+AUTO_SCORE_MIN = 5
+
 # ==============================
 # BOOKMAKERS
 # ==============================
@@ -1298,20 +1312,48 @@ if get_supabase_client():
     st.success("Supabase conectado")
 else:
     st.info("Supabase opcional: configure SUPABASE_URI e SUPABASE_KEY.")
-    sport_key = league_map[selected_league]
+
+with st.spinner("Escaneando oportunidades do mercado..."):
+
+    all_events = []
+
+    for league in AUTO_LEAGUES:
+        sport_key = league_map.get(league)
+
+        if not sport_key:
+            continue
+
+        events = fetch_odds_data(
+            sport_key=sport_key,
+            api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
+            region=AUTO_REGION
+        )
+
+        if events:
+            all_events.extend(events)
 
     with st.spinner("Escaneando oportunidades do mercado..."):
+
+
+    for league in AUTO_LEAGUES:
+        sport_key = league_map.get(league)
+
+        if not sport_key:
+            continue
+
         events = fetch_odds_data(
-        sport_key=sport_key,
-        api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
-        region=selected_region,
-    )
+            sport_key=sport_key,
+            api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
+            region=AUTO_REGION
+        )
+
+        if events:
 
     opportunities_df = build_real_opportunities(
-    events,
-    min_ev_percent=0.5,
-    min_bookmakers=1
-)
+        all_events,
+        min_ev_percent=AUTO_MIN_EV,
+        min_bookmakers=1
+    )
 
     if opportunities_df.empty:
         st.warning(
