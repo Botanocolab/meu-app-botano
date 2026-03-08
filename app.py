@@ -1127,6 +1127,7 @@ def main():
         
         all_events = []
         with st.spinner("Escaneando mercados..."):
+            # O ERRO ESTAVA AQUI - GARANTINDO ALINHAMENTO DO LOOP
             for sport_name in selected_sports:
                 sport_key = SPORTS_MAP[sport_name]
                 data = fetch_odds_data(sport_key=sport_key, api_key=api_key, region=region)
