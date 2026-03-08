@@ -638,6 +638,67 @@ def odds_drop_percentage(opening_odd: float, current_odd: float) -> float:
 def detect_smart_money(opening_odd: float, current_odd: float) -> bool:
     """Detecta Smart Money."""
     return odds_drop_percentage(opening_odd, current_odd) >= 5
+# =========================================================
+# CLASSIFICAÇÃO INTELIGENTE BOTANO+
+# =========================================================
+
+def classify_probability_label(prob_percent: float) -> str:
+    if prob_percent >= 70:
+        return "Muito forte"
+    elif prob_percent >= 60:
+        return "Boa"
+    elif prob_percent >= 52:
+        return "Arriscada com valor"
+    return "Especulativa"
+
+
+def classify_confidence_label(prob_percent: float, ev_percent: float) -> str:
+    if prob_percent >= 70 and ev_percent >= 2:
+        return "Alta"
+    elif prob_percent >= 60 and ev_percent >= 1:
+        return "Boa"
+    elif prob_percent >= 52 and ev_percent > 0:
+        return "Moderada"
+    return "Baixa"
+
+
+def quick_reading_text(prob_percent: float, ev_percent: float) -> str:
+    if prob_percent >= 70 and ev_percent > 0:
+        return "Alta chance de bater."
+    elif prob_percent >= 60 and ev_percent > 0:
+        return "Boa chance, risco controlado."
+    elif prob_percent >= 52 and ev_percent > 0:
+        return "Arriscada, mas pode valer."
+    return "Só faz sentido com stake pequena."
+
+
+def stake_suggestion_from_profile(prob_percent: float, ev_percent: float) -> float:
+    if prob_percent >= 70 and ev_percent >= 2:
+        return 2.0
+    elif prob_percent >= 60 and ev_percent >= 1:
+        return 1.5
+    elif prob_percent >= 52 and ev_percent > 0:
+        return 0.75
+    return 0.5
+
+
+def probability_color(prob_percent: float) -> str:
+    if prob_percent >= 70:
+        return "#22c55e"
+    elif prob_percent >= 60:
+        return "#84cc16"
+    elif prob_percent >= 52:
+        return "#f59e0b"
+    return "#ef4444"
+
+def confidence_badge_color(conf_label: str) -> str:
+    if conf_label == "Alta":
+        return "#16a34a"
+    elif conf_label == "Boa":
+        return "#65a30d"
+    elif conf_label == "Moderada":
+        return "#d97706"
+    return "#dc2626"
 
 def build_real_opportunities(events, min_ev_percent=1.0, min_bookmakers=2):
     rows = []
