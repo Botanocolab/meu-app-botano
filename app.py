@@ -804,6 +804,11 @@ def build_real_opportunities(events, min_ev_percent=1.0, min_bookmakers=2):
                     confidence=confidence
                 )
 
+                probability_label = classify_probability_label(fair_prob_percent)
+                confidence_label = classify_confidence_label(fair_prob_percent, ev_percent)
+                reading_text = quick_reading_text(fair_prob_percent, ev_percent)
+                stake_suggested = stake_suggestion_from_profile(fair_prob_percent, ev_percent)
+
                 rows.append({
                     "sport_key": sport_key,
                     "game": game,
@@ -815,6 +820,10 @@ def build_real_opportunities(events, min_ev_percent=1.0, min_bookmakers=2):
                     "avg_odd": round(avg_odd, 2),
                     "fair_prob": round(fair_prob, 4),
                     "fair_prob_percent": round(fair_prob_percent, 2),
+                    "probability_percent": round(fair_prob_percent, 2),
+                    "probability_label": probability_label,
+                    "reading_text": reading_text,
+                    "confidence_label": confidence_label,
                     "ev": round(ev, 4),
                     "ev_percent": round(ev_percent, 2),
                     "score_botano": round(score_botano, 2),
