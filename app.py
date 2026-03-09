@@ -826,7 +826,7 @@ def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
         score = row["score_botano"]
 
         # 1X2 = mercado mais sensível => exigir mais qualidade
-        if market == "1X2":
+if market == "1X2":
     return (
         ev >= 0.8 and
         fair_prob >= 0.38 and
@@ -834,16 +834,15 @@ def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
         score >= 4.2
     )
 
-        # Escanteios = geralmente aceita odds um pouco maiores
-        elif market == "Escanteios":
+# Escanteios = geralmente aceita odds um pouco maiores
+elif market == "Escanteios":
     return (
         ev >= 0.6 and
-        fair_prob >= 0.34 and
-        1.45 <= odd <= 5.50 and
-        score >= 4.0
+        fair_prob >= 0.34
     )
 
-        elif market == "Cartões":
+# Cartões
+elif market == "Cartões":
     return (
         ev >= 0.9 and
         fair_prob >= 0.32 and
@@ -852,12 +851,13 @@ def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
     )
 
         # fallback para mercados desconhecidos
-        return (
-    ev >= 0.8 and
-    fair_prob >= 0.36 and
-    1.40 <= odd <= 5.00 and
-    score >= 4.2
-)
+else:
+    return (
+        ev >= 0.8 and
+        fair_prob >= 0.36 and
+        1.40 <= odd <= 5.00 and
+        score >= 4.2
+    )
 
     work_df = work_df[work_df.apply(market_pass, axis=1)].copy()
 
