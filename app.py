@@ -8,6 +8,8 @@ import requests
 import streamlit as st
 from supabase import Client, create_client
 
+st.write("🚨 DEBUG APP RECARREGADO 🚨")
+
 league_map = {
     "Brasileirão Série A": "soccer_brazil_campeonato",
     "Brasileirão Série B": "soccer_brazil_serie_b",
@@ -1584,6 +1586,8 @@ with st.spinner("Escaneando oportunidades do mercado..."):
 
     all_events = []
 
+    st.write("DEBUG entrou no scanner")
+
     for league in AUTO_LEAGUES:
         sport_key = SPORTS_MAP.get(league)
 
@@ -1591,19 +1595,17 @@ with st.spinner("Escaneando oportunidades do mercado..."):
             continue
 
         events = fetch_odds_data(
-            sport_key=sport_key,
-            api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
-            region=AUTO_REGION
-        )
-
-        if events:
-            all_events.extend(events)
-
-    raw_opportunities_df = build_real_opportunities(
-    all_events,
-    min_ev_percent=AUTO_MIN_EV,
-    min_bookmakers=1
+    sport_key=sport_key,
+    api_key=st.secrets.get("THE_ODDS_API_KEY", ""),
+    region=AUTO_REGION
 )
+
+st.write("DEBUG liga:", league)
+st.write("DEBUG sport_key:", sport_key)
+st.write("DEBUG events retornados:", len(events) if events else 0)
+
+if events:
+    all_events.extend(events)
 
 st.write("DEBUG all_events:", len(all_events) if all_events else 0)
 st.write("DEBUG raw_opportunities:", len(raw_opportunities_df) if raw_opportunities_df is not None else 0)
