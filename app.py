@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
+import numpy as np
 import requests
 import streamlit as st
 from supabase import Client, create_client
@@ -722,6 +723,265 @@ def confidence_badge_color(conf_label: str) -> str:
         return "#d97706"
     return "#dc2626"
 
+def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aplica filtros automáticos inteligentes nas oportunidades já calculadas.
+
+    Espera um DataFrame contendo, idealmente, colunas como:
+    - market_family
+    - ev_percent
+    - fair_prob
+    - best_odd
+    - odd_media
+    - score_botano
+    - confianca
+    - evento
+    - liga
+    - selecao
+
+    Retorna:
+    - DataFrame filtrado, ranqueado e com coluna SNIPER_SCORE
+    """
+
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    work_df = df.copy()
+
+    # -----------------------------
+    # 1. Garantia de colunas
+    # -----------------------------
+    required_defaults = {
+        "market_family": "Desconhecido",
+        "ev_percent": 0.0,
+        "fair_prob": 0.0,
+        "best_odd": 0.0,
+        "odd_media": 0.0,
+        "score_botano": 0.0,
+        "confianca": "Média",
+        "evento": "",
+        "liga": "",
+        "selecao": "",
+    }
+
+    for col, default in required_defaults.items():
+        if col not in work_df.columns:
+            work_df[col] = default
+
+    # Normalização de tipos numéricos
+    numeric_cols = ["ev_percent", "fair_prob", "best_odd", "odd_media", "score_botano"]
+    for col in numeric_cols:
+        work_df[col] = pd.to_numeric(work_df[col], errors="coerce").fillna(0.0)
+
+    work_df["market_family"] = work_df["market_family"].astype(str).fillna("Desconhecido")
+
+    # -----------------------------
+    # 2. Padronização dos nomes dos mercados
+    # -----------------------------
+    def normalize_market_name(value: str) -> str:
+        v = str(value).strip().lower()
+
+        if v in ["1x2", "h2h", "match winner", "vencedor"]:
+            return "1X2"
+        if "escanteio" in v or "corner" in v:
+            return "Escanteios"
+        if "cart" in v:
+            return "Cartões"
+
+        return str(value).strip()
+
+    work_df["market_family"] = work_df["market_family"].apply(normalize_market_name)
+
+    # -----------------------------
+    # 3. Filtros-base globais
+    # -----------------------------
+    # Aqui começa a inteligência: já eliminamos ruído óbvio
+    work_df = work_df[
+        (work_df["ev_percent"] > 0) &
+        (work_df["fair_prob"] > 0) &
+        (work_df["best_odd"] >= 1.20)
+    ].copy()
+
+    if work_df.empty:
+        return pd.DataFrame()
+
+    # Faixas globais de odds para evitar extremos ruins
+    work_df = work_df[
+        (work_df["best_odd"] <= 6.50)
+    ].copy()
+
+    if work_df.empty:
+        return pd.DataFrame()
+
+    # -----------------------------
+    # 4. Regras por mercado
+    # -----------------------------
+    def market_pass(row) -> bool:
+        market = row["market_family"]
+        ev = row["ev_percent"]
+        fair_prob = row["fair_prob"]
+        odd = row["best_odd"]
+        score = row["score_botano"]
+
+        # 1X2 = mercado mais sensível => exigir mais qualidade
+        if market == "1X2":
+            return (
+                ev >= 1.5 and
+                fair_prob >= 0.42 and
+                1.45 <= odd <= 3.80 and
+                score >= 5.0
+            )
+
+        # Escanteios = geralmente aceita odds um pouco maiores
+        elif market == "Escanteios":
+            return (
+                ev >= 1.2 and
+                fair_prob >= 0.38 and
+                1.55 <= odd <= 4.50 and
+                score >= 4.8
+            )
+
+        # Cartões = mercado mais volátil => exigir EV melhor
+        elif market == "Cartões":
+            return (
+                ev >= 1.8 and
+                fair_prob >= 0.36 and
+                1.60 <= odd <= 4.80 and
+                score >= 5.2
+            )
+
+        # fallback para mercados desconhecidos
+        return (
+            ev >= 1.5 and
+            fair_prob >= 0.40 and
+            1.40 <= odd <= 4.00 and
+            score >= 5.0
+        )
+
+    work_df = work_df[work_df.apply(market_pass, axis=1)].copy()
+
+    if work_df.empty:
+        return pd.DataFrame()
+
+    # -----------------------------
+    # 5. Normalização para montar o SNIPER_SCORE
+    # -----------------------------
+    def minmax(series: pd.Series) -> pd.Series:
+        s = pd.to_numeric(series, errors="coerce").fillna(0.0)
+        if s.nunique() <= 1:
+            return pd.Series([0.5] * len(s), index=s.index)
+        return (s - s.min()) / (s.max() - s.min())
+
+    work_df["ev_norm"] = minmax(work_df["ev_percent"])
+    work_df["prob_norm"] = minmax(work_df["fair_prob"] * 100)
+    work_df["score_norm"] = minmax(work_df["score_botano"])
+
+    # Penalização leve para odds altas demais
+    # Quanto mais perto de 2~3 melhor; muito altas perdem consistência
+    def odd_balance(odd: float) -> float:
+        if odd <= 0:
+            return 0.0
+        sweet_spot = 2.20
+        distance = abs(odd - sweet_spot)
+        penalty = min(distance / 3.5, 1.0)
+        return max(0.0, 1.0 - penalty)
+
+    work_df["odd_balance"] = work_df["best_odd"].apply(odd_balance)
+
+    # Peso de confiança textual, se existir
+    confidence_map = {
+        "muito alta": 1.00,
+        "alta": 0.85,
+        "média": 0.65,
+        "media": 0.65,
+        "baixa": 0.35
+    }
+
+    work_df["confidence_weight"] = (
+        work_df["confianca"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .map(confidence_map)
+        .fillna(0.60)
+    )
+
+    # -----------------------------
+    # 6. Cálculo do SNIPER_SCORE
+    # -----------------------------
+    # Lógica:
+    # - EV importa muito
+    # - Probabilidade justa importa bastante
+    # - Score BOTANO entra como reforço
+    # - Odd equilibrada ajuda
+    # - Confiança ajusta o resultado
+    work_df["SNIPER_SCORE"] = (
+        (work_df["ev_norm"] * 4.2) +
+        (work_df["prob_norm"] * 3.0) +
+        (work_df["score_norm"] * 2.2) +
+        (work_df["odd_balance"] * 1.2)
+    ) * work_df["confidence_weight"]
+
+    work_df["SNIPER_SCORE"] = work_df["SNIPER_SCORE"] * 10
+
+    # -----------------------------
+    # 7. Regras extras de qualidade
+    # -----------------------------
+    # Elimina entradas repetidas muito parecidas
+    # prioridade: maior SNIPER_SCORE por evento+mercado+selecao
+    dedup_cols = ["evento", "market_family", "selecao"]
+    existing_dedup_cols = [c for c in dedup_cols if c in work_df.columns]
+
+    work_df = work_df.sort_values(
+        by=["SNIPER_SCORE", "ev_percent", "fair_prob"],
+        ascending=[False, False, False]
+    ).copy()
+
+    if existing_dedup_cols:
+        work_df = work_df.drop_duplicates(subset=existing_dedup_cols, keep="first")
+
+    # -----------------------------
+    # 8. Limite por mercado para não poluir
+    # -----------------------------
+    final_blocks = []
+
+    market_limits = {
+        "1X2": 6,
+        "Escanteios": 5,
+        "Cartões": 5,
+    }
+
+    for market_name, group in work_df.groupby("market_family", dropna=False):
+        limit = market_limits.get(market_name, 4)
+        final_blocks.append(group.head(limit))
+
+    if not final_blocks:
+        return pd.DataFrame()
+
+    final_df = pd.concat(final_blocks, ignore_index=True)
+
+    # Ranking final global
+    final_df = final_df.sort_values(
+        by=["SNIPER_SCORE", "ev_percent", "fair_prob"],
+        ascending=[False, False, False]
+    ).reset_index(drop=True)
+
+    # -----------------------------
+    # 9. Label visual de sniper
+    # -----------------------------
+    def sniper_label(score: float) -> str:
+        if score >= 8.8:
+            return "ELITE"
+        elif score >= 7.4:
+            return "FORTE"
+        elif score >= 6.2:
+            return "BOA"
+        return "OBSERVAÇÃO"
+
+    final_df["sniper_label"] = final_df["SNIPER_SCORE"].apply(sniper_label)
+
+    return final_df
+
 def build_real_opportunities(events, min_ev_percent=1.0, min_bookmakers=2):
     rows = []
 
@@ -1341,15 +1601,17 @@ with st.spinner("Escaneando oportunidades do mercado..."):
             all_events.extend(events)
 
     opportunities_df = build_real_opportunities(
-        all_events,
-        min_ev_percent=AUTO_MIN_EV,
-        min_bookmakers=1
-    )
+    all_events,
+    min_ev_percent=AUTO_MIN_EV,
+    min_bookmakers=1
+)
 
-    if opportunities_df.empty:
-        st.warning(
-            "Nenhuma oportunidade encontrada agora. Verifique sua API, a liga escolhida ou aguarde atualização do mercado."
-        )
+opportunities_df = apply_intelligent_filters(opportunities_df)
+
+if opportunities_df.empty:
+    st.warning(
+        "Nenhuma oportunidade encontrada agora. Verifique sua API, a liga escolhida ou aguarde novos jogos."
+    )
 
     if not opportunities_df.empty:
         opportunities_df = opportunities_df[
