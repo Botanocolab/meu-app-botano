@@ -807,7 +807,7 @@ def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
 
     # Faixas globais de odds para evitar extremos ruins
     work_df = work_df[
-        (work_df["best_odd"] <= 6.50)
+        (work_df["best_odd"] <= 7.50)
     ].copy()
 
     if work_df.empty:
@@ -825,38 +825,37 @@ def apply_intelligent_filters(df: pd.DataFrame) -> pd.DataFrame:
 
         # 1X2 = mercado mais sensível => exigir mais qualidade
         if market == "1X2":
-            return (
-                ev >= 1.5 and
-                fair_prob >= 0.42 and
-                1.45 <= odd <= 3.80 and
-                score >= 5.0
-            )
+    return (
+        ev >= 0.8 and
+        fair_prob >= 0.38 and
+        1.35 <= odd <= 4.80 and
+        score >= 4.2
+    )
 
         # Escanteios = geralmente aceita odds um pouco maiores
         elif market == "Escanteios":
-            return (
-                ev >= 1.2 and
-                fair_prob >= 0.38 and
-                1.55 <= odd <= 4.50 and
-                score >= 4.8
-            )
+    return (
+        ev >= 0.6 and
+        fair_prob >= 0.34 and
+        1.45 <= odd <= 5.50 and
+        score >= 4.0
+    )
 
-        # Cartões = mercado mais volátil => exigir EV melhor
         elif market == "Cartões":
-            return (
-                ev >= 1.8 and
-                fair_prob >= 0.36 and
-                1.60 <= odd <= 4.80 and
-                score >= 5.2
-            )
+    return (
+        ev >= 0.9 and
+        fair_prob >= 0.32 and
+        1.50 <= odd <= 6.00 and
+        score >= 4.2
+    )
 
         # fallback para mercados desconhecidos
         return (
-            ev >= 1.5 and
-            fair_prob >= 0.40 and
-            1.40 <= odd <= 4.00 and
-            score >= 5.0
-        )
+    ev >= 0.8 and
+    fair_prob >= 0.36 and
+    1.40 <= odd <= 5.00 and
+    score >= 4.2
+)
 
     work_df = work_df[work_df.apply(market_pass, axis=1)].copy()
 
@@ -1600,13 +1599,25 @@ with st.spinner("Escaneando oportunidades do mercado..."):
         if events:
             all_events.extend(events)
 
-    opportunities_df = build_real_opportunities(
+    raw_opportunities_df = build_real_opportunities(
     all_events,
     min_ev_percent=AUTO_MIN_EV,
     min_bookmakers=1
 )
 
-opportunities_df = apply_intelligent_filters(opportunities_df)
+st.write("DEBUG all_events:", len(all_events) if all_events else 0)
+st.write("DEBUG raw_opportunities:", len(raw_opportunities_df) if raw_opportunities_df is not None else 0)
+
+if raw_opportunities_df is not None and not raw_opportunities_df.empty:
+    st.write("DEBUG raw columns:", list(raw_opportunities_df.columns))
+    st.dataframe(raw_opportunities_df.head(10))
+
+opportunities_df = apply_intelligent_filters(raw_opportunities_df)
+
+st.write("DEBUG filtered_opportunities:", len(opportunities_df) if opportunities_df is not None else 0)
+
+if opportunities_df is not None and not opportunities_df.empty:
+    st.dataframe(opportunities_df.head(10))
 
 if opportunities_df.empty:
     st.warning(
@@ -1615,9 +1626,7 @@ if opportunities_df.empty:
 
     if not opportunities_df.empty:
         opportunities_df = opportunities_df[
-            (opportunities_df["ev_percent"] >= ev_min)
-            & (opportunities_df["score_botano"] >= score_min)
-            & (opportunities_df["mercado"].isin(mercados_selecionados))
+            (opportunities_df["mercado"].isin(mercados_selecionados))
         ].copy()
 
         opportunities_df.sort_values(
